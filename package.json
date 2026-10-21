@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "description": "Multi-Depot Inventory Balancing Prototype inspired by Nexus",
   "private": true,
+  "type": "module",
   "scripts": {
+    "dev": "node scripts/dev.js",
     "server": "npm --prefix server run dev",
     "client": "npm --prefix client run dev",
     "test": "npm --prefix server test"
