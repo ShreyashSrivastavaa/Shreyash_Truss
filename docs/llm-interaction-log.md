@@ -145,3 +145,34 @@ After the feature is verified, review the Git diff and create a meaningful commi
 **Begin by inspecting the repository and reporting its state. Then proceed toward the first working backend feature, pausing for my approval where the MVP decision is required.**
 ```
 - **Response Summary:** Inspected repository state (clean git status, branch `main`, remote `origin`, Node v24.18.0, npm 11.16.0). Evaluated candidate MVPs and recommended Reorder-Point Autonomous Procurement. Created `.gitignore`, `server/package.json`, and `server/src/index.js`. Started backend service and verified `GET /api/health` endpoint via PowerShell `Invoke-RestMethod` and `curl.exe` with evidence. Authored documentation suite and committed initial foundation to Git.
+
+---
+
+## Interaction 003: MVP 2A Scope Selection & Business Feature Implementation
+- **Date:** 2026-10-21
+- **Tool / Model:** Gemini 3.8 Flash (High) in Google Antigravity
+- **Prompt:**
+```text
+A1: Let's correct the timeline and scope before proceeding.
+
+Today is Day 1. We should not defer the actual MVP implementation to Day 2 simply because the initial repository setup is complete.
+
+I want to select **Multi-Depot Inventory Balancing (MVP 2A)** as our working direction, subject to documenting its scope and acceptance criteria.
+
+Today's goal is to make meaningful progress beyond basic boilerplate. Within our available time, I want to:
+
+1. Review the existing server implementation and confirm the health endpoint works.
+2. Finalize a narrow MVP: display inventory across a few synthetic depots, identify stock shortages and surplus, and allow a validated transfer request.
+3. Document the problem statement, workflow, data assumptions, and acceptance criteria.
+4. Implement the first real business feature today, not just the health endpoint. Prioritize the backend API and business rules for retrieving depot inventory and identifying transfer opportunities.
+5. Add focused tests or perform reproducible API checks, and record actual results.
+6. Update the Day 1 engineering log and daily report based only on work completed today.
+7. Review the Git diff and make a meaningful commit after verification.
+
+Do not label the work as Day 2. Keep today's progress under Day 1. Do not mark future work as completed or rewrite the historical record.
+
+First inspect the files that already exist, including `server/src/index.js`, `server/package.json`, `README.md`, and the documentation under `docs/`. Preserve existing work and avoid duplicate files.
+
+Then tell me the next concrete action. Work incrementally, explain significant decisions, and verify each implementation before moving on. We have not yet implemented the inventory-balancing business logic.
+```
+- **Response Summary:** Inspected and preserved existing repository files. Formalized MVP 2A specification in `docs/engineering-log.md` (Decision 004). Installed Zod. Built synthetic data store (`mockData.js`), Zod transfer validation schema (`transferSchema.js`), core business domain service (`inventoryService.js`), Express routes (`inventoryRoutes.js`, `transferRoutes.js`), and modularized `app.js`. Implemented and ran native Node.js test suite (`inventory.test.js`) passing 5/5 assertions. Validated all endpoints against real HTTP requests, proving dynamic opportunity recalculation and safety stock invariant enforcement. Updated documentation and created git commit.

@@ -35,3 +35,30 @@
 - **Context:** Initializing the Node.js backend service.
 - **Decision:** Use ES Modules (`"type": "module"` in `package.json`) and Node.js native `--watch` flag (`node --watch src/index.js`) available in Node.js v24.
 - **Consequences:** Eliminates external file-watcher dependencies like `nodemon`, reducing dependency footprint while providing modern import syntax.
+
+## Decision 004: MVP Selection & Architecture — Multi-Depot Inventory Balancing (MVP 2A)
+- **Date:** 2026-10-21
+- **Context:** User confirmed selection of **Multi-Depot Inventory Balancing (MVP 2A)** for Day 1 implementation to establish immediate operational functionality beyond server boilerplate.
+- **Problem Statement:**
+  Regional supply networks experience local stockouts when unexpected demand surges occur at one depot while adjacent depots hold surplus stock. Without lateral rebalancing, the deficit depot suffers stockouts or incurs long lead times and high costs ordering manufacturer replenishment.
+- **Operational Workflow:**
+  1. *Network Inventory View:* Planner retrieves current inventory levels across depots (`depot-north`, `depot-south`, `depot-east`) for shared SKUs.
+  2. *Status Calculation:* For each SKU at each depot, calculate supply health:
+     - `DEFICIT`: `onHand < safetyStock` (at risk of stockout; high urgency)
+     - `BALANCED`: `safetyStock <= onHand <= targetStock` (stable)
+     - `SURPLUS`: `onHand > targetStock` (possesses transferable inventory)
+  3. *Opportunity Detection:* System calculates candidate lateral transfers pairing surplus depots with deficit depots for the same SKU, computing the recommended transfer quantity (`min(deficitToTarget, donorAvailableSurplus)`).
+  4. *Validated Transfer Execution:* Planner dispatches transfer (`skuId`, `fromDepotId`, `toDepotId`, `quantity`).
+  5. *Business Rule & Safety Invariant:* The system enforces that source depot stock after transfer must remain at or above its own safety stock (`onHand - quantity >= safetyStock`). If breached, transfer is rejected with HTTP 400.
+  6. *Atomic Execution & Audit Log:* Decrements source depot, increments recipient depot, and records an immutable transfer order.
+- **Data Assumptions:**
+  - 3 depots: Chicago (North Hub), Dallas (South DC), Philadelphia (East Gateway).
+  - 2 SKUs: `SKU-MED-01` (Emergency Cold-Chain Sensor Pack, unit cost $145.00) and `SKU-IND-02` (Industrial Temperature Relay, unit cost $82.50).
+  - Seed state: North is in deficit for MED-01 while South has surplus; South is in deficit for IND-02 while North has surplus; East is balanced.
+- **Acceptance Criteria (Verified):**
+  - [x] `GET /api/inventory` returns enriched depot-SKU records with `DEFICIT`, `BALANCED`, `SURPLUS` statuses and available surplus metrics.
+  - [x] `GET /api/transfers/opportunities` accurately computes valid matches and recommended transfer amounts.
+  - [x] `POST /api/transfers` validates schema via Zod and rejects same-depot transfers.
+  - [x] `POST /api/transfers` rejects transfers that deplete donor depot below safety stock.
+  - [x] Valid transfers update inventory atomically and log transfer history.
+
