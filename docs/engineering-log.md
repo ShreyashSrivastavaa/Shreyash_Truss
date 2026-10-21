@@ -79,4 +79,27 @@
   - Added `POST /api/inventory/reset` endpoint to restore synthetic baseline without restarting the server, ensuring repeatable UI testing and demos.
   - Identified workspace DX friction: running `npm run dev` from repository root failed due to missing root `package.json`.
 
+## Decision 006: Frontend Dashboard Architecture & Full-Stack Integration
+- **Date:** 2026-10-21
+- **Context:** Implementing the React + Tailwind CSS client to provide an interactive, real-time command dashboard for Multi-Depot Inventory Balancing (MVP 2A).
+- **Architecture & Structure:**
+  - *Tooling:* Vite + React 18 + Tailwind CSS 3.4 in decoupled `client/` folder.
+  - *Network Proxy:* Configured Vite dev server proxy (`client/vite.config.js`) forwarding `/api` to Express backend on `:5000` to eliminate CORS friction and hardcoded URLs in local dev.
+  - *Root Workspace Runner:* Added root `package.json` with convenience scripts (`npm run server`, `npm run client`, `npm test`) solving the `ENOENT D:\package.json` friction.
+- **Components Built:**
+  - `Header.jsx`: Service health status pill, refresh trigger, and "Reset Demo State" modal.
+  - `SummaryCards.jsx`: 4 KPI metrics (Active Deficits, Available Surpluses, Balanced Stock, Connected Nodes).
+  - `OpportunityList.jsx`: Actionable transfer cards with safety stock thresholds, custom quantity inputs, client-side guards, and one-click dispatch.
+  - `InventoryGrid.jsx`: 3 depot cards with SKU stock meters, numerical thresholds (on-hand, safety, target), and dynamic status badges (`DEFICIT`, `BALANCED`, `SURPLUS`).
+  - `TransferLog.jsx`: Real-time audit table of executed transfers.
+  - `client/src/api/client.js`: Structured fetch wrapper handling typed API responses and structured error messages.
+- **Verification & Testing Results:**
+  - Automated production build passed: `vite build` generated production bundle in 4.46s with 0 errors.
+  - Browser subagent completed end-to-end user workflow:
+    1. Verified initial state (2 Deficits, 2 Surpluses, 2 Opportunities).
+    2. Verified invalid input handling: Entering 180 units displayed warning `"Exceeds safe stock (150)"` and disabled button.
+    3. Verified valid transfer dispatch: Dispatched 75 units of `SKU-MED-01` from Dallas to Chicago. Deficits dropped to 1, Chicago updated to 100 (BALANCED), opportunity cleared, and transfer log appended.
+    4. Verified demo reset: Clicked "Reset Demo State", confirmed in modal, and verified state returned to initial baseline.
+
+
 

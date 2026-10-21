@@ -153,14 +153,91 @@
    - Subsequent call to `GET /api/inventory` confirmed `depot-north` stock rose from 25 to 100, transitioning its status from `DEFICIT` to `BALANCED`.
    - Subsequent call to `GET /api/transfers/opportunities` dynamically recalculated opportunities: MED-01 opportunity was resolved and dropped from the queue.
 
+### D. Frontend React + Tailwind Dashboard Implementation
+- **Vite & Tailwind Setup:**
+  - Configured Vite with React plugin and dev proxy to `http://localhost:5000` for `/api` requests.
+  - Configured Tailwind CSS 3.4 with dark-mode aesthetic.
+  - Added root `package.json` workspace convenience scripts (`npm run server`, `npm run client`, `npm test`).
+- **Dashboard Components:**
+  - `Header.jsx`: Online status indicator (`/api/health`), manual refresh button, and confirmation modal for baseline state reset.
+  - `SummaryCards.jsx`: 4 metric cards (Active Deficits, Available Surpluses, Balanced Stock, Monitored Network).
+  - `OpportunityList.jsx`: Actionable transfer opportunity cards with pre-filled quantities, custom override inputs, client-side safety limits, and dispatch action.
+  - `InventoryGrid.jsx`: 3 depot cards with SKU stock meters, numerical thresholds, and color-coded status badges (`DEFICIT`, `BALANCED`, `SURPLUS`).
+  - `TransferLog.jsx`: Real-time audit table of executed transfers.
+  - `client/src/api/client.js`: Robust API client with typed response handling and error mapping.
+
+---
+
+## 2. Validation & Verification Evidence
+
+### A. Automated Backend Domain Test Suite (`npm test`)
+```text
+> nexus-server@0.1.0 test
+> node --test
+
+▶ Multi-Depot Inventory Balancing Domain Logic
+  ✔ calculates correct initial inventory status and balance flags (1.489ms)
+  ✔ identifies valid transfer opportunities for deficit depots (1.1573ms)
+  ✔ executes a valid transfer and atomically updates inventory levels (1.7256ms)
+  ✔ rejects transfer when requested quantity depletes source below safety stock (0.8201ms)
+  ✔ rejects transfer when source and destination are identical via Zod (3.219ms)
+  ✔ rejects transfer when depot or SKU record does not exist (0.3374ms)
+  ✔ sequential transfers deplete surplus and reject second transfer when safety stock is breached (0.435ms)
+  ✔ transfer opportunities dynamically reflect updated surplus after a partial transfer (0.6403ms)
+✔ Multi-Depot Inventory Balancing Domain Logic (11.6654ms)
+ℹ tests 8
+ℹ suites 1
+ℹ pass 8
+ℹ fail 0
+ℹ duration_ms 351.1137
+```
+
+### B. Production Frontend Build (`npm run build`)
+```text
+> nexus-client@0.1.0 build
+> vite build
+
+vite v6.4.5 building for production...
+transforming...
+✓ 1583 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.49 kB │ gzip:  0.34 kB
+dist/assets/index-DToU7_xz.css   17.45 kB │ gzip:  4.09 kB
+dist/assets/index-BStaB01e.js   169.13 kB │ gzip: 52.75 kB
+✓ built in 4.46s
+```
+
+### C. Live Full-Stack End-to-End Browser Testing
+Performed full interactive testing using autonomous browser subagent on `http://localhost:5173`:
+1. **Initial Dashboard Load:**
+   - Header displayed "Nexus MVP 2A" and "Backend Online".
+   - Summary cards rendered 2 Deficits, 2 Surpluses, 2 Balanced Stock, and 3 Depots / 2 SKUs.
+   - Detected Rebalancing Opportunities showed 2 actionable transfer proposals.
+   - Depot Matrix rendered all 3 depots with correct on-hand and safety thresholds.
+2. **Invalid Transfer Input Handling:**
+   - Entered `180` units for `SKU-MED-01` from South to North (exceeding safe available surplus of `150`).
+   - UI immediately displayed inline warning: `"Exceeds safe stock (150)"` in red text and disabled the "Approve Transfer" button.
+3. **Valid Transfer Execution & Real-Time Reconciliation:**
+   - Entered `75` units for `SKU-MED-01` from South DC to North Hub and clicked "Approve Transfer".
+   - Success notification banner appeared: `"Dispatched 75 units of Emergency Cold-Chain Sensor Pack to North Logistics Hub"`.
+   - Deficits count updated from `2` to `1` (Balanced count rose from `2` to `3`).
+   - North Logistics Hub on-hand updated from `25` to `100`, badge flipped from `DEFICIT` to `BALANCED`.
+   - Opportunity list dynamically removed the resolved `SKU-MED-01` opportunity.
+   - Transfer Audit Log table added the completed transfer with full timestamp and transfer ID.
+4. **Demo Reset Action:**
+   - Clicked "Reset Demo State", opened modal, and clicked "Confirm Reset".
+   - State instantly restored to initial baseline: Deficits returned to `2`, North Hub returned to `25` units in DEFICIT, opportunity reappeared, and transfer log cleared.
+
 ---
 
 ## 3. Blockers & Risks
-- **None.** All business logic, input validation, and safety invariants are operational and covered by tests.
+- **None.** The full stack (Express backend on `:5000` + React frontend on `:5173`) is verified and operational.
 
 ---
 
 ## 4. Next Steps
-1. **Frontend UI Client:** Initialize React + Tailwind CSS client to provide an interactive dashboard displaying the depot inventory cards, imbalance badges, and one-click transfer execution.
-2. **PostgreSQL & Prisma Transition:** When database environment is configured, migrate in-memory storage to Prisma models with database-level transactions.
-3. **Transit Matrix Enhancement:** Add estimated transit days and transportation cost calculations per inter-depot lane.
+1. **Database Persistence Migration:** When ready, replace the in-memory array repository with PostgreSQL and Prisma models without altering the Express route contracts.
+2. **Transit Matrix & Cost Optimization:** Incorporate inter-depot mileage and shipping cost calculations to rank multiple transfer opportunities by cost efficiency.
+3. **Automated Procurement Extension:** Integrate reorder-point purchase order triggers for items where no network depot holds sufficient surplus to balance a deficit.
+
