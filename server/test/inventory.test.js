@@ -93,4 +93,71 @@ describe('Multi-Depot Inventory Balancing Domain Logic', () => {
     assert.equal(parsed.success, false);
     assert.equal(parsed.error.issues[0].message, 'Source and destination depots must be different');
   });
+
+  test('rejects transfer when depot or SKU record does not exist', () => {
+    assert.throws(
+      () => {
+        executeTransfer({
+          skuId: 'NON-EXISTENT-SKU',
+          fromDepotId: 'depot-south',
+          toDepotId: 'depot-north',
+          quantity: 10
+        });
+      },
+      {
+        message: /Source inventory record not found/
+      }
+    );
+  });
+
+  test('sequential transfers deplete surplus and reject second transfer when safety stock is breached', () => {
+    // Initial south onHand = 190, safetyStock = 40 (availableSurplus = 150)
+    // Transfer 1: 100 units (valid, remaining onHand = 90, safe surplus left = 50)
+    const firstResult = executeTransfer({
+      skuId: 'SKU-MED-01',
+      fromDepotId: 'depot-south',
+      toDepotId: 'depot-north',
+      quantity: 100
+    });
+    assert.equal(firstResult.updatedSource.onHand, 90);
+
+    // Transfer 2: 60 units (invalid: 90 - 60 = 30 < 40 safetyStock)
+    assert.throws(
+      () => {
+        executeTransfer({
+          skuId: 'SKU-MED-01',
+          fromDepotId: 'depot-south',
+          toDepotId: 'depot-north',
+          quantity: 60
+        });
+      },
+      {
+        message: /Maximum safe transfer is 50 units/
+      }
+    );
+  });
+
+  test('transfer opportunities dynamically reflect updated surplus after a partial transfer', () => {
+    // Initial MED-01 opportunity recommends 95 units from south (maxTransferable 150)
+    let opps = getTransferOpportunities();
+    const initialMedOpp = opps.find(o => o.skuId === 'SKU-MED-01');
+    assert.equal(initialMedOpp.maxTransferable, 150);
+    assert.equal(initialMedOpp.recommendedQuantity, 95);
+
+    // Execute partial transfer of 15 units (recipient onHand goes 25 -> 40, still below safetyStock 50)
+    executeTransfer({
+      skuId: 'SKU-MED-01',
+      fromDepotId: 'depot-south',
+      toDepotId: 'depot-north',
+      quantity: 15
+    });
+
+    // Check remaining opportunity: recipient now has 40 (still in DEFICIT, deficitToTarget is 80)
+    opps = getTransferOpportunities();
+    const updatedMedOpp = opps.find(o => o.skuId === 'SKU-MED-01');
+    assert.ok(updatedMedOpp, 'Opportunity should still exist while recipient is in deficit');
+    assert.equal(updatedMedOpp.maxTransferable, 135); // 175 - 40 safetyStock = 135
+    assert.equal(updatedMedOpp.recommendedQuantity, 80); // 120 target - 40 onHand = 80
+    assert.equal(updatedMedOpp.recipientOnHand, 40);
+  });
 });

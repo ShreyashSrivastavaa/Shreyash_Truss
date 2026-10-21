@@ -62,3 +62,21 @@
   - [x] `POST /api/transfers` rejects transfers that deplete donor depot below safety stock.
   - [x] Valid transfers update inventory atomically and log transfer history.
 
+## Decision 005: Backend Architectural Review & Verification Audit
+- **Date:** 2026-10-21
+- **Context:** Focused technical review of the initial backend implementation prior to scaffolding the frontend dashboard.
+- **Persistence Mechanism (Facts vs. Assumptions):**
+  - *Storage Layer:* All state (`depots`, `skus`, `inventory`, `transfers`) is stored strictly in Node.js process heap memory (`let` variables initialized via deep copy from `mockData.js`).
+  - *Server Restart Behavior:* State **does not** survive process restarts. Any process termination or code change in `--watch` mode resets all inventory numbers and clears transfer history back to baseline.
+  - *Atomicity & Concurrency:* Updates are synchronous JavaScript mutations within Node's single-threaded event loop. They are **not** database transactions (no ACID guarantees, WAL, disk persistence, or multi-instance concurrency locks).
+- **Edge-Case Evaluation:**
+  - *Missing Records:* Requests referencing invalid or non-existent depot IDs or SKU IDs fail cleanly with HTTP 404.
+  - *Excess Quantities:* Requests attempting to transfer more than `onHand - safetyStock` are rejected with HTTP 400, strictly preserving the source depot's buffer.
+  - *Sequential / Repeated Requests:* Handled serially by the event loop. If two identical requests arrive, the first will deduct stock; the second will evaluate against the newly decremented stock and reject if safety stock would be breached. (No idempotency key exists yet, so duplicate clicks can execute twice if surplus permits).
+  - *Opportunity Engine Thresholds:* Opportunity detection is triggered strictly when a depot is in `DEFICIT` (`onHand < safetyStock`). Once stock reaches safety stock (even if below `targetStock`), the status becomes `BALANCED` and drops off the active emergency transfer list.
+- **Audit Outcomes & Additions:**
+  - Expanded automated test suite from 5 to 8 tests in `server/test/inventory.test.js`, proving 404 behavior, sequential surplus depletion, and dynamic opportunity recalculation.
+  - Added `POST /api/inventory/reset` endpoint to restore synthetic baseline without restarting the server, ensuring repeatable UI testing and demos.
+  - Identified workspace DX friction: running `npm run dev` from repository root failed due to missing root `package.json`.
+
+

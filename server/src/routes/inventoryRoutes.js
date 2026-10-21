@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getInventoryStatus, getDepots, getSkus } from '../services/inventoryService.js';
+import { getInventoryStatus, getDepots, getSkus, resetState } from '../services/inventoryService.js';
 
 const router = Router();
 
@@ -28,6 +28,16 @@ router.get('/', (req, res) => {
       skus,
       inventory: items
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/inventory/reset - resets synthetic state back to default baseline
+router.post('/reset', (req, res) => {
+  try {
+    resetState();
+    res.status(200).json({ message: 'Inventory state reset to initial synthetic baseline' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
