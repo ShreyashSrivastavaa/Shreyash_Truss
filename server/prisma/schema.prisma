@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Depot {
+  id        String   @id
+  name      String
+  city      String
+  region    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventory         InventoryLevel[]
+  outgoingTransfers Transfer[]       @relation("FromDepot")
+  incomingTransfers Transfer[]       @relation("ToDepot")
+}
+
+model Sku {
+  id        String   @id
+  name      String
+  unit      String
+  unitCost  Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventory InventoryLevel[]
+  transfers Transfer[]
+}
+
+model InventoryLevel {
+  id          String   @id @default(uuid())
+  depotId     String
+  skuId       String
+  onHand      Int
+  safetyStock Int
+  targetStock Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  depot Depot @relation(fields: [depotId], references: [id], onDelete: Cascade)
+  sku   Sku   @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@unique([depotId, skuId])
+}
+
+model Transfer {
+  id          String   @id
+  skuId       String
+  fromDepotId String
+  toDepotId   String
+  quantity    Int
+  status      String   @default("COMPLETED")
+  createdAt   DateTime @default(now())
+
+  sku       Sku   @relation(fields: [skuId], references: [id])
+  fromDepot Depot @relation("FromDepot", fields: [fromDepotId], references: [id])
+  toDepot   Depot @relation("ToDepot", fields: [toDepotId], references: [id])
+}

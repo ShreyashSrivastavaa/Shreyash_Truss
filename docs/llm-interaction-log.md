@@ -176,3 +176,19 @@ First inspect the files that already exist, including `server/src/index.js`, `se
 Then tell me the next concrete action. Work incrementally, explain significant decisions, and verify each implementation before moving on. We have not yet implemented the inventory-balancing business logic.
 ```
 - **Response Summary:** Inspected and preserved existing repository files. Formalized MVP 2A specification in `docs/engineering-log.md` (Decision 004). Installed Zod. Built synthetic data store (`mockData.js`), Zod transfer validation schema (`transferSchema.js`), core business domain service (`inventoryService.js`), Express routes (`inventoryRoutes.js`, `transferRoutes.js`), and modularized `app.js`. Implemented and ran native Node.js test suite (`inventory.test.js`) passing 5/5 assertions. Validated all endpoints against real HTTP requests, proving dynamic opportunity recalculation and safety stock invariant enforcement. Updated documentation and created git commit.
+
+## Interaction 004: Day 2 — Reliability, Invariant Hardening & PostgreSQL Persistence
+- **Date:** 2026-10-22
+- **Tool / Model:** Gemini 3.8 Flash (High) in Google Antigravity
+- **Prompt:**
+```text
+Day 2 — Nexus Inventory Balancing: Reliability & Persistence
+Continue working on my existing Truss Studios internship project. Do not rebuild it from scratch.
+Repository: https://github.com/ShreyashSrivastavaa/Shreyash_Truss
+Context: Yesterday, I built an end-to-end Nexus-inspired Multi-Depot Inventory Balancing prototype using React, Tailwind CSS, Node.js and Express. It includes inventory monitoring, transfer recommendations, safety-stock validation, transfer execution, and an interactive dashboard.
+Today, I want to improve the correctness of the existing system and then work toward PostgreSQL persistence.
+Phase 1: Audit and fix existing business logic
+Phase 2: Verify the application
+Phase 3: Implement PostgreSQL persistence
+```
+- **Response Summary:** Conducted deep code inspection identifying the 5 audited vulnerabilities. Authored isolated regression suite (`regression.test.js`) exposing the bugs. Fixed recommendation logic to strictly use donor surplus above target (`Math.max(0, onHand - targetStock)`), enforced recipient target capacity limits in `executeTransfer`, added multi-donor shortage split tracking to avoid duplicate allocation, added JSON 404 and global error-handling middleware for consistent JSON responses, and keyed React custom quantities by unique opportunity IDs. Verified with full backend test suite and browser subagent dashboard workflow. Designed Prisma schema (`Depot`, `Sku`, `InventoryLevel`, `Transfer`), synchronized with local PostgreSQL, seeded synthetic data, and implemented transactional execution with raw row-level locks (`SELECT ... FOR UPDATE`). Authored `persistence.test.js` validating transactions, locks, and seed reset. All 18 tests passing.

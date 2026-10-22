@@ -4,11 +4,11 @@ import { getInventoryStatus, getDepots, getSkus, resetState } from '../services/
 const router = Router();
 
 // GET /api/inventory - returns full inventory state with depot & SKU details and balance status
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const items = getInventoryStatus();
-    const depots = getDepots();
-    const skus = getSkus();
+    const items = await getInventoryStatus();
+    const depots = await getDepots();
+    const skus = await getSkus();
 
     // Summary counts
     const deficits = items.filter(i => i.status === 'DEFICIT').length;
@@ -34,9 +34,9 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/inventory/reset - resets synthetic state back to default baseline
-router.post('/reset', (req, res) => {
+router.post('/reset', async (req, res) => {
   try {
-    resetState();
+    await resetState();
     res.status(200).json({ message: 'Inventory state reset to initial synthetic baseline' });
   } catch (error) {
     res.status(500).json({ error: error.message });

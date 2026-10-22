@@ -101,5 +101,37 @@
     3. Verified valid transfer dispatch: Dispatched 75 units of `SKU-MED-01` from Dallas to Chicago. Deficits dropped to 1, Chicago updated to 100 (BALANCED), opportunity cleared, and transfer log appended.
     4. Verified demo reset: Clicked "Reset Demo State", confirmed in modal, and verified state returned to initial baseline.
 
+## Decision 007: Domain Invariant Hardening & Business Logic Correctness (Day 2)
+- **Date:** 2026-10-22
+- **Context:** An audit of Day 1 MVP implementation surfaced 5 correctness and resilience flaws in transfer matching, transfer validation, HTTP error consistency, and UI state tracking.
+- **Flaws Identified & Remediations:**
+  1. *Donor Depletion Below Target:* Recommendations previously used stock above safety stock (`onHand - safetyStock = 150`), recommending 95 units and leaving donor with 95 on hand (< targetStock 100). Fixed to use donor surplus strictly above target stock (`Math.max(0, onHand - targetStock)` = 90), preserving donor target buffers.
+  2. *Recipient Target Stock Capacity Breach:* `executeTransfer` only checked donor safety stock and allowed transfers exceeding recipient target stock. Added invariant check: `if (dest.onHand + quantity > dest.targetStock)` rejecting with HTTP 400 and calculating maximum allowable transfer.
+  3. *Multi-Donor Duplicate Allocation:* When multiple donors possessed surplus for a single deficit node, previous nested loop recommended transfers against the full shortage for each donor, collectively exceeding the recipient's deficit. Fixed by tracking and decrementing recipient remaining shortage and donor remaining surplus across opportunities.
+  4. *Malformed JSON & Unknown Route HTML Responses:* Express default error handlers returned HTML `<pre>` tags. Added JSON 404 catch-all middleware and global Express error middleware intercepting `SyntaxError` (malformed JSON body) and unhandled server errors, ensuring consistent `{ error: "..." }` JSON responses.
+  5. *UI Quantity State Keyed by Array Index:* `OpportunityList.jsx` previously stored custom quantities keyed by array `index` (`quantities[index]`). When transfers were dispatched or the list reordered, remaining rows inherited shifted input values. Fixed by keying state to unique composite opportunity keys (`${opp.skuId}-${opp.fromDepotId}-${opp.toDepotId}`).
+- **Verification:**
+  - Authored isolated regression suite in `server/test/regression.test.js` exposing all 5 bugs before applying fixes.
+  - Minimal fixes implemented; verified regression suite and all existing domain tests passing.
 
-
+## Decision 008: PostgreSQL & Prisma Persistence Layer with Concurrency Safety (Day 2)
+- **Date:** 2026-10-22
+- **Context:** The system required moving from in-memory state to persistent relational storage using PostgreSQL and Prisma while preserving the existing Express API and React frontend without disruption.
+- **Relational Schema Design (`server/prisma/schema.prisma`):**
+  - `Depot`: id, name, city, region, timestamps.
+  - `Sku`: id, name, unit, unitCost, timestamps.
+  - `InventoryLevel`: id (UUID), depotId (FK), skuId (FK), onHand, safetyStock, targetStock, unique constraint `@@unique([depotId, skuId])`.
+  - `Transfer`: id (UUID/TRF), skuId (FK), fromDepotId (FK), toDepotId (FK), quantity, status, createdAt.
+- **Concurrency & ACID Transaction Guarantees:**
+  - `executeTransfer` executes within `prisma.$transaction(async (tx) => { ... })`.
+  - To prevent concurrent double-spend race conditions, inventory rows are locked using raw row-level locks (`SELECT ... FOR UPDATE`).
+  - Stock invariants (donor safety stock floor, recipient target capacity ceiling) are checked inside the locked transaction; invalid requests roll back cleanly without mutating database state.
+- **Environment & Zero-Friction Fallback:**
+  - Database URL configured via `server/.env` (`DATABASE_URL="postgresql://postgres@localhost:5432/nexus_inventory?schema=public"`).
+  - Credentials excluded from Git via `.gitignore`; template documented in `server/.env.example`.
+  - Service layer includes transparent in-memory fallback if `DATABASE_URL` is omitted, allowing zero-dependency local test runs.
+- **Verification:**
+  - Built comprehensive `server/test/persistence.test.js` verifying PostgreSQL connection, seeded records, transactional updates, row-level concurrency locking, and database reset.
+  - Full suite of 18 tests passing (18/18) with `--test-concurrency=1`.
+  - Full frontend production build verified (`vite build`).
+  - End-to-end browser subagent verified live transfer dispatch, inventory reconciliation, and demo reset backed by active PostgreSQL instance.

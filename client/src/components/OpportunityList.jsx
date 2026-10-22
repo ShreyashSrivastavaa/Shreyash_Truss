@@ -2,26 +2,31 @@ import React, { useState } from 'react';
 import { ArrowRight, Truck, Check, AlertCircle, Clock } from 'lucide-react';
 
 export default function OpportunityList({ opportunities, onExecuteTransfer, isExecuting }) {
-  // Local state to track custom quantities per opportunity index/key
+  // Local state to track custom quantities per opportunity unique key (skuId-fromDepotId-toDepotId)
   const [quantities, setQuantities] = useState({});
   const [activeError, setActiveError] = useState(null);
   const [activeSuccess, setActiveSuccess] = useState(null);
 
-  const getQuantityFor = (opp, index) => {
-    return quantities[index] !== undefined ? quantities[index] : opp.recommendedQuantity;
+  const getOpportunityKey = (opp) => `${opp.skuId}-${opp.fromDepotId}-${opp.toDepotId}`;
+
+  const getQuantityFor = (opp) => {
+    const key = getOpportunityKey(opp);
+    return quantities[key] !== undefined ? quantities[key] : opp.recommendedQuantity;
   };
 
-  const handleQuantityChange = (index, val) => {
+  const handleQuantityChange = (opp, val) => {
+    const key = getOpportunityKey(opp);
     setQuantities(prev => ({
       ...prev,
-      [index]: val === '' ? '' : parseInt(val, 10)
+      [key]: val === '' ? '' : parseInt(val, 10)
     }));
   };
 
-  const handleSubmit = async (opp, index) => {
+  const handleSubmit = async (opp) => {
     setActiveError(null);
     setActiveSuccess(null);
-    const qty = getQuantityFor(opp, index);
+    const key = getOpportunityKey(opp);
+    const qty = getQuantityFor(opp);
 
     if (!qty || qty <= 0) {
       setActiveError(`Please enter a valid positive quantity for ${opp.skuName}`);
@@ -36,10 +41,10 @@ export default function OpportunityList({ opportunities, onExecuteTransfer, isEx
         quantity: Number(qty)
       });
       setActiveSuccess(`Dispatched ${qty} units of ${opp.skuName} to ${opp.toDepotName}`);
-      // Clear local quantity override
+      // Clear local quantity override for this specific opportunity
       setQuantities(prev => {
         const copy = { ...prev };
-        delete copy[index];
+        delete copy[key];
         return copy;
       });
     } catch (err) {
@@ -88,13 +93,14 @@ export default function OpportunityList({ opportunities, onExecuteTransfer, isEx
         </div>
       ) : (
         <div className="space-y-3">
-          {opportunities.map((opp, index) => {
-            const currentQty = getQuantityFor(opp, index);
+          {opportunities.map((opp) => {
+            const oppKey = getOpportunityKey(opp);
+            const currentQty = getQuantityFor(opp);
             const isExcessive = currentQty > opp.maxTransferable;
 
             return (
               <div
-                key={`${opp.skuId}-${opp.fromDepotId}-${opp.toDepotId}`}
+                key={oppKey}
                 className="p-4 rounded-lg bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 {/* Left: Routing Details */}
@@ -132,14 +138,14 @@ export default function OpportunityList({ opportunities, onExecuteTransfer, isEx
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="flex flex-col items-end">
                     <div className="flex items-center gap-1.5">
-                      <label htmlFor={`qty-${index}`} className="text-[11px] text-slate-400">Qty:</label>
+                      <label htmlFor={`qty-${oppKey}`} className="text-[11px] text-slate-400">Qty:</label>
                       <input
-                        id={`qty-${index}`}
+                        id={`qty-${oppKey}`}
                         type="number"
                         min="1"
                         max={opp.maxTransferable}
                         value={currentQty}
-                        onChange={(e) => handleQuantityChange(index, e.target.value)}
+                        onChange={(e) => handleQuantityChange(opp, e.target.value)}
                         disabled={isExecuting}
                         className={`w-20 px-2.5 py-1.5 text-xs rounded bg-slate-900 border ${isExcessive ? 'border-rose-500 text-rose-300' : 'border-slate-700 text-white'} text-right focus:outline-none focus:border-indigo-500`}
                       />
@@ -150,7 +156,7 @@ export default function OpportunityList({ opportunities, onExecuteTransfer, isEx
                   </div>
 
                   <button
-                    onClick={() => handleSubmit(opp, index)}
+                    onClick={() => handleSubmit(opp)}
                     disabled={isExecuting || isExcessive || !currentQty || currentQty <= 0}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >

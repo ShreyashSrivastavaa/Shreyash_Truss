@@ -10,12 +10,12 @@ import {
 import { createTransferSchema } from '../src/schemas/transferSchema.js';
 
 describe('Multi-Depot Inventory Balancing Domain Logic', () => {
-  beforeEach(() => {
-    resetState();
+  beforeEach(async () => {
+    await resetState();
   });
 
-  test('calculates correct initial inventory status and balance flags', () => {
-    const status = getInventoryStatus();
+  test('calculates correct initial inventory status and balance flags', async () => {
+    const status = await getInventoryStatus();
     assert.equal(status.length, 6);
 
     const northMed = status.find(i => i.depotId === 'depot-north' && i.skuId === 'SKU-MED-01');
@@ -30,8 +30,8 @@ describe('Multi-Depot Inventory Balancing Domain Logic', () => {
     assert.equal(southMed.availableSurplus, 150); // 190 - 40 safety stock
   });
 
-  test('identifies valid transfer opportunities for deficit depots', () => {
-    const opps = getTransferOpportunities();
+  test('identifies valid transfer opportunities for deficit depots', async () => {
+    const opps = await getTransferOpportunities();
     assert.equal(opps.length, 2);
 
     const medOpp = opps.find(o => o.skuId === 'SKU-MED-01');
@@ -39,12 +39,12 @@ describe('Multi-Depot Inventory Balancing Domain Logic', () => {
     assert.equal(medOpp.fromDepotId, 'depot-south');
     assert.equal(medOpp.toDepotId, 'depot-north');
     assert.equal(medOpp.maxTransferable, 150);
-    assert.equal(medOpp.recommendedQuantity, 95);
+    assert.equal(medOpp.recommendedQuantity, 90);
     assert.equal(medOpp.urgency, 'HIGH');
   });
 
-  test('executes a valid transfer and atomically updates inventory levels', () => {
-    const result = executeTransfer({
+  test('executes a valid transfer and atomically updates inventory levels', async () => {
+    const result = await executeTransfer({
       skuId: 'SKU-MED-01',
       fromDepotId: 'depot-south',
       toDepotId: 'depot-north',
@@ -56,20 +56,20 @@ describe('Multi-Depot Inventory Balancing Domain Logic', () => {
     assert.equal(result.updatedDestination.onHand, 75); // 25 + 50
 
     // Verify history logged
-    const history = getTransferHistory();
+    const history = await getTransferHistory();
     assert.equal(history.length, 1);
     assert.equal(history[0].quantity, 50);
 
     // Verify destination is no longer in deficit
-    const updatedStatus = getInventoryStatus();
+    const updatedStatus = await getInventoryStatus();
     const northMed = updatedStatus.find(i => i.depotId === 'depot-north' && i.skuId === 'SKU-MED-01');
     assert.equal(northMed.status, 'BALANCED');
   });
 
-  test('rejects transfer when requested quantity depletes source below safety stock', () => {
-    assert.throws(
-      () => {
-        executeTransfer({
+  test('rejects transfer when requested quantity depletes source below safety stock', async () => {
+    await assert.rejects(
+      async () => {
+        await executeTransfer({
           skuId: 'SKU-MED-01',
           fromDepotId: 'depot-south',
           toDepotId: 'depot-north',
@@ -94,10 +94,10 @@ describe('Multi-Depot Inventory Balancing Domain Logic', () => {
     assert.equal(parsed.error.issues[0].message, 'Source and destination depots must be different');
   });
 
-  test('rejects transfer when depot or SKU record does not exist', () => {
-    assert.throws(
-      () => {
-        executeTransfer({
+  test('rejects transfer when depot or SKU record does not exist', async () => {
+    await assert.rejects(
+      async () => {
+        await executeTransfer({
           skuId: 'NON-EXISTENT-SKU',
           fromDepotId: 'depot-south',
           toDepotId: 'depot-north',
@@ -110,42 +110,42 @@ describe('Multi-Depot Inventory Balancing Domain Logic', () => {
     );
   });
 
-  test('sequential transfers deplete surplus and reject second transfer when safety stock is breached', () => {
-    // Initial south onHand = 190, safetyStock = 40 (availableSurplus = 150)
-    // Transfer 1: 100 units (valid, remaining onHand = 90, safe surplus left = 50)
-    const firstResult = executeTransfer({
+  test('sequential transfers deplete surplus and reject second transfer when safety stock is breached', async () => {
+    // Initial south onHand = 190, safetyStock = 40 (safe surplus = 150)
+    // Transfer 1: 90 units to North (North target capacity is 95, remaining South onHand = 100, safe surplus left = 60)
+    const firstResult = await executeTransfer({
       skuId: 'SKU-MED-01',
       fromDepotId: 'depot-south',
       toDepotId: 'depot-north',
-      quantity: 100
+      quantity: 90
     });
-    assert.equal(firstResult.updatedSource.onHand, 90);
+    assert.equal(firstResult.updatedSource.onHand, 100);
 
-    // Transfer 2: 60 units (invalid: 90 - 60 = 30 < 40 safetyStock)
-    assert.throws(
-      () => {
-        executeTransfer({
+    // Transfer 2: 70 units (invalid: 100 - 70 = 30 < 40 safetyStock)
+    await assert.rejects(
+      async () => {
+        await executeTransfer({
           skuId: 'SKU-MED-01',
           fromDepotId: 'depot-south',
           toDepotId: 'depot-north',
-          quantity: 60
+          quantity: 70
         });
       },
       {
-        message: /Maximum safe transfer is 50 units/
+        message: /Maximum safe transfer is 60 units/
       }
     );
   });
 
-  test('transfer opportunities dynamically reflect updated surplus after a partial transfer', () => {
-    // Initial MED-01 opportunity recommends 95 units from south (maxTransferable 150)
-    let opps = getTransferOpportunities();
+  test('transfer opportunities dynamically reflect updated surplus after a partial transfer', async () => {
+    // Initial MED-01 opportunity recommends 90 units from south (maxTransferable 150)
+    let opps = await getTransferOpportunities();
     const initialMedOpp = opps.find(o => o.skuId === 'SKU-MED-01');
     assert.equal(initialMedOpp.maxTransferable, 150);
-    assert.equal(initialMedOpp.recommendedQuantity, 95);
+    assert.equal(initialMedOpp.recommendedQuantity, 90);
 
     // Execute partial transfer of 15 units (recipient onHand goes 25 -> 40, still below safetyStock 50)
-    executeTransfer({
+    await executeTransfer({
       skuId: 'SKU-MED-01',
       fromDepotId: 'depot-south',
       toDepotId: 'depot-north',
@@ -153,11 +153,12 @@ describe('Multi-Depot Inventory Balancing Domain Logic', () => {
     });
 
     // Check remaining opportunity: recipient now has 40 (still in DEFICIT, deficitToTarget is 80)
-    opps = getTransferOpportunities();
+    // Donor now has 175 (target 100, so donor surplus above target is 75)
+    opps = await getTransferOpportunities();
     const updatedMedOpp = opps.find(o => o.skuId === 'SKU-MED-01');
     assert.ok(updatedMedOpp, 'Opportunity should still exist while recipient is in deficit');
     assert.equal(updatedMedOpp.maxTransferable, 135); // 175 - 40 safetyStock = 135
-    assert.equal(updatedMedOpp.recommendedQuantity, 80); // 120 target - 40 onHand = 80
+    assert.equal(updatedMedOpp.recommendedQuantity, 75); // min(80 deficitToTarget, 75 donor surplus above target) = 75
     assert.equal(updatedMedOpp.recipientOnHand, 40);
   });
 });
