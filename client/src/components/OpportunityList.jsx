@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, Truck, Check, AlertCircle, Clock } from 'lucide-react';
+import { ArrowRight, Truck, Check, AlertCircle, PackagePlus, ShieldAlert } from 'lucide-react';
 
 export default function OpportunityList({ opportunities, onExecuteTransfer, isExecuting }) {
   // Local state to track custom quantities per opportunity unique key (skuId-fromDepotId-toDepotId)
@@ -33,6 +33,11 @@ export default function OpportunityList({ opportunities, onExecuteTransfer, isEx
       return;
     }
 
+    if (qty > opp.maxTransferable) {
+      setActiveError(`Quantity ${qty} exceeds maximum allowable donor surplus (${opp.maxTransferable} units).`);
+      return;
+    }
+
     try {
       await onExecuteTransfer({
         skuId: opp.skuId,
@@ -40,7 +45,7 @@ export default function OpportunityList({ opportunities, onExecuteTransfer, isEx
         toDepotId: opp.toDepotId,
         quantity: Number(qty)
       });
-      setActiveSuccess(`Dispatched ${qty} units of ${opp.skuName} to ${opp.toDepotName}`);
+      setActiveSuccess(`Staged transfer order (PENDING) for ${qty} units of ${opp.skuName} to ${opp.toDepotName}. Ready for dispatch.`);
       // Clear local quantity override for this specific opportunity
       setQuantities(prev => {
         const copy = { ...prev };
@@ -48,7 +53,7 @@ export default function OpportunityList({ opportunities, onExecuteTransfer, isEx
         return copy;
       });
     } catch (err) {
-      setActiveError(err.message || 'Transfer failed');
+      setActiveError(err.message || 'Transfer order creation failed');
     }
   };
 
@@ -88,7 +93,7 @@ export default function OpportunityList({ opportunities, onExecuteTransfer, isEx
           </div>
           <h3 className="text-sm font-semibold text-slate-200">Network Fully Balanced</h3>
           <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            No regional deficits detected below safety stock. All depots maintain sufficient local inventory buffers.
+            No active deficits requiring lateral transfers. Either depots maintain target buffers or replenishment shipments are already en route.
           </p>
         </div>
       ) : (
@@ -117,10 +122,10 @@ export default function OpportunityList({ opportunities, onExecuteTransfer, isEx
 
                   <div className="flex items-center gap-2 text-xs text-slate-300 flex-wrap">
                     <span className="font-semibold text-emerald-400">{opp.fromDepotName}</span>
-                    <span className="text-slate-500 text-[11px]">(On-hand: {opp.donorOnHand}, Safety: {opp.donorSafetyStock})</span>
+                    <span className="text-slate-500 text-[11px]">(On-hand: {opp.donorOnHand}, Target: {opp.donorTargetStock})</span>
                     <ArrowRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                     <span className="font-semibold text-rose-400">{opp.toDepotName}</span>
-                    <span className="text-slate-500 text-[11px]">(On-hand: {opp.recipientOnHand}, Safety: {opp.recipientSafetyStock})</span>
+                    <span className="text-slate-500 text-[11px]">(On-hand: {opp.recipientOnHand}, Target: {opp.recipientTargetStock})</span>
                   </div>
 
                   <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-400">
@@ -159,9 +164,10 @@ export default function OpportunityList({ opportunities, onExecuteTransfer, isEx
                     onClick={() => handleSubmit(opp)}
                     disabled={isExecuting || isExcessive || !currentQty || currentQty <= 0}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Reserve inventory at source and stage transfer order"
                   >
-                    <Truck className="w-3.5 h-3.5" />
-                    <span>{isExecuting ? 'Dispatching...' : 'Approve Transfer'}</span>
+                    <PackagePlus className="w-3.5 h-3.5" />
+                    <span>{isExecuting ? 'Staging...' : 'Stage Transfer Order'}</span>
                   </button>
                 </div>
               </div>

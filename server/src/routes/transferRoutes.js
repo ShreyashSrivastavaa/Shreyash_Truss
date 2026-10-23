@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { createTransferSchema } from '../schemas/transferSchema.js';
 import {
   getTransferOpportunities,
+  createTransfer,
   executeTransfer,
+  dispatchTransfer,
+  receiveTransfer,
+  cancelTransfer,
   getTransferHistory
 } from '../services/inventoryService.js';
 
@@ -21,7 +25,7 @@ router.get('/opportunities', async (req, res) => {
   }
 });
 
-// GET /api/transfers - lists completed transfer history
+// GET /api/transfers - lists transfer history
 router.get('/', async (req, res) => {
   try {
     const history = await getTransferHistory();
@@ -34,9 +38,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/transfers - validates and executes a lateral inventory transfer
+// POST /api/transfers - validates and creates a lateral inventory transfer in PENDING status
 router.post('/', async (req, res) => {
-  // Schema validation using Zod
   const validationResult = createTransferSchema.safeParse(req.body);
   if (!validationResult.success) {
     return res.status(400).json({
@@ -49,9 +52,72 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const result = await executeTransfer(validationResult.data);
+    const result = await createTransfer(validationResult.data);
     res.status(201).json({
-      message: 'Transfer executed successfully',
+      message: 'Transfer created successfully',
+      ...result
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({
+      error: error.message
+    });
+  }
+});
+
+// POST /api/transfers/:id/dispatch - dispatches a PENDING transfer to IN_TRANSIT
+router.post('/:id/dispatch', async (req, res) => {
+  const { id } = req.params;
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    return res.status(400).json({ error: 'Valid transfer ID is required' });
+  }
+
+  try {
+    const result = await dispatchTransfer(id.trim());
+    res.status(200).json({
+      message: 'Transfer dispatched successfully',
+      ...result
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({
+      error: error.message
+    });
+  }
+});
+
+// POST /api/transfers/:id/receive - marks an IN_TRANSIT transfer as RECEIVED
+router.post('/:id/receive', async (req, res) => {
+  const { id } = req.params;
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    return res.status(400).json({ error: 'Valid transfer ID is required' });
+  }
+
+  try {
+    const result = await receiveTransfer(id.trim());
+    res.status(200).json({
+      message: 'Transfer received successfully',
+      ...result
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({
+      error: error.message
+    });
+  }
+});
+
+// POST /api/transfers/:id/cancel - cancels a PENDING transfer and releases reserved inventory
+router.post('/:id/cancel', async (req, res) => {
+  const { id } = req.params;
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    return res.status(400).json({ error: 'Valid transfer ID is required' });
+  }
+
+  try {
+    const result = await cancelTransfer(id.trim());
+    res.status(200).json({
+      message: 'Transfer cancelled successfully',
       ...result
     });
   } catch (error) {

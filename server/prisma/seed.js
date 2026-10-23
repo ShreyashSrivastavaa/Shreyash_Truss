@@ -49,6 +49,8 @@ export async function seed(client = prisma) {
         depotId: inv.depotId,
         skuId: inv.skuId,
         onHand: inv.onHand,
+        reserved: inv.reserved ?? 0,
+        inTransit: inv.inTransit ?? 0,
         safetyStock: inv.safetyStock,
         targetStock: inv.targetStock
       }

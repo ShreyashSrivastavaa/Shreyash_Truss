@@ -37,6 +37,8 @@ model InventoryLevel {
   depotId     String
   skuId       String
   onHand      Int
+  reserved    Int      @default(0)
+  inTransit   Int      @default(0)
   safetyStock Int
   targetStock Int
   createdAt   DateTime @default(now())
@@ -54,8 +56,9 @@ model Transfer {
   fromDepotId String
   toDepotId   String
   quantity    Int
-  status      String   @default("COMPLETED")
+  status      String   @default("PENDING")
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   sku       Sku   @relation(fields: [skuId], references: [id])
   fromDepot Depot @relation("FromDepot", fields: [fromDepotId], references: [id])

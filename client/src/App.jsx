@@ -9,7 +9,10 @@ import {
   fetchInventory,
   fetchOpportunities,
   fetchTransferHistory,
-  executeTransfer,
+  createTransfer,
+  dispatchTransfer,
+  receiveTransfer,
+  cancelTransfer,
   resetInventory
 } from './api/client';
 import { AlertCircle, RefreshCw } from 'lucide-react';
@@ -56,16 +59,34 @@ export default function App() {
     loadDashboardData();
   }, [loadDashboardData]);
 
-  // Handle transfer execution
-  const handleExecuteTransfer = async (transferPayload) => {
+  // Handle staging a transfer order (PENDING)
+  const handleStageTransfer = async (transferPayload) => {
     setIsExecuting(true);
     try {
-      await executeTransfer(transferPayload);
-      // Immediately refresh live data from backend (no local frontend state simulation)
+      await createTransfer(transferPayload);
+      // Immediately refresh live data from backend
       await loadDashboardData();
     } finally {
       setIsExecuting(false);
     }
+  };
+
+  // Handle dispatching freight (PENDING -> IN_TRANSIT)
+  const handleDispatchTransfer = async (transferId) => {
+    await dispatchTransfer(transferId);
+    await loadDashboardData();
+  };
+
+  // Handle receiving freight (IN_TRANSIT -> RECEIVED)
+  const handleReceiveTransfer = async (transferId) => {
+    await receiveTransfer(transferId);
+    await loadDashboardData();
+  };
+
+  // Handle cancelling transfer order (PENDING -> CANCELLED)
+  const handleCancelTransfer = async (transferId) => {
+    await cancelTransfer(transferId);
+    await loadDashboardData();
   };
 
   // Handle demo reset
@@ -126,7 +147,7 @@ export default function App() {
         {/* 2. Detected Transfer Opportunities (Action Section) */}
         <OpportunityList
           opportunities={opportunities}
-          onExecuteTransfer={handleExecuteTransfer}
+          onExecuteTransfer={handleStageTransfer}
           isExecuting={isExecuting}
         />
 
@@ -138,8 +159,13 @@ export default function App() {
           />
         )}
 
-        {/* 4. Transfer Audit Log */}
-        <TransferLog transfers={transfers} />
+        {/* 4. Active Shipments Pipeline & Audit Log */}
+        <TransferLog
+          transfers={transfers}
+          onDispatch={handleDispatchTransfer}
+          onReceive={handleReceiveTransfer}
+          onCancel={handleCancelTransfer}
+        />
       </main>
 
       <footer className="border-t border-slate-900 py-4 text-center text-[11px] text-slate-500">

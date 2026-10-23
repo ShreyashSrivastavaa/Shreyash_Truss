@@ -14,6 +14,8 @@ router.get('/', async (req, res) => {
     const deficits = items.filter(i => i.status === 'DEFICIT').length;
     const surpluses = items.filter(i => i.status === 'SURPLUS').length;
     const balanced = items.filter(i => i.status === 'BALANCED').length;
+    const inTransitUnits = items.reduce((sum, i) => sum + (i.inTransit || 0), 0);
+    const reservedUnits = items.reduce((sum, i) => sum + (i.reserved || 0), 0);
 
     res.status(200).json({
       summary: {
@@ -22,7 +24,9 @@ router.get('/', async (req, res) => {
         totalTrackedItems: items.length,
         deficitsCount: deficits,
         surplusesCount: surpluses,
-        balancedCount: balanced
+        balancedCount: balanced,
+        inTransitUnits,
+        reservedUnits
       },
       depots,
       skus,

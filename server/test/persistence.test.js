@@ -7,6 +7,8 @@ import {
   getDepots,
   getSkus,
   executeTransfer,
+  dispatchTransfer,
+  receiveTransfer,
   getTransferHistory
 } from '../src/services/inventoryService.js';
 
@@ -38,6 +40,8 @@ describe('PostgreSQL & Prisma Persistence Integration', () => {
     assert.equal(southMed.targetStock, 100);
     assert.equal(southMed.status, 'SURPLUS');
     assert.equal(southMed.surplusAboveTarget, 90);
+    assert.equal(southMed.reserved, 0);
+    assert.equal(southMed.inTransit, 0);
   });
 
   test('executeTransfer executes inside a PostgreSQL transaction and updates database records', async () => {
@@ -49,7 +53,7 @@ describe('PostgreSQL & Prisma Persistence Integration', () => {
       quantity: 50
     });
 
-    assert.equal(result.transfer.status, 'COMPLETED');
+    assert.equal(result.transfer.status, 'PENDING');
     assert.ok(result.transfer.id.startsWith('TRF-'));
 
     // Directly verify in PostgreSQL via Prisma raw model query (bypassing service cache)
@@ -63,16 +67,43 @@ describe('PostgreSQL & Prisma Persistence Integration', () => {
       where: { id: result.transfer.id }
     });
 
-    assert.equal(dbSource.onHand, 140, 'PostgreSQL source onHand must be decremented to 140');
-    assert.equal(dbDest.onHand, 75, 'PostgreSQL destination onHand must be incremented to 75');
+    assert.equal(dbSource.onHand, 190, 'PostgreSQL source physical onHand must remain 190 at PENDING');
+    assert.equal(dbSource.reserved, 50, 'PostgreSQL source reserved must be incremented to 50');
+    assert.equal(dbDest.onHand, 25, 'PostgreSQL destination onHand must remain 25 at PENDING');
+    assert.equal(dbDest.inTransit, 0, 'PostgreSQL destination inTransit must remain 0 at PENDING');
     assert.ok(dbTransfer, 'PostgreSQL Transfer record must be persisted in database');
+    assert.equal(dbTransfer.status, 'PENDING');
     assert.equal(dbTransfer.quantity, 50);
+
+    // Verify dispatch in PostgreSQL
+    const dispatchRes = await dispatchTransfer(result.transfer.id);
+    assert.equal(dispatchRes.transfer.status, 'IN_TRANSIT');
+
+    const dbSourceDispatched = await prisma.inventoryLevel.findFirst({
+      where: { depotId: 'depot-south', skuId: 'SKU-MED-01' }
+    });
+    const dbDestDispatched = await prisma.inventoryLevel.findFirst({
+      where: { depotId: 'depot-north', skuId: 'SKU-MED-01' }
+    });
+    assert.equal(dbSourceDispatched.onHand, 140, 'PostgreSQL source onHand must decrement to 140 on dispatch');
+    assert.equal(dbSourceDispatched.reserved, 0, 'PostgreSQL source reserved must decrement to 0 on dispatch');
+    assert.equal(dbDestDispatched.inTransit, 50, 'PostgreSQL destination inTransit must increment to 50 on dispatch');
+    assert.equal(dbDestDispatched.onHand, 25, 'PostgreSQL destination onHand must remain 25 while en route');
+
+    // Verify receive in PostgreSQL
+    const receiveRes = await receiveTransfer(result.transfer.id);
+    assert.equal(receiveRes.transfer.status, 'RECEIVED');
+
+    const dbDestReceived = await prisma.inventoryLevel.findFirst({
+      where: { depotId: 'depot-north', skuId: 'SKU-MED-01' }
+    });
+    assert.equal(dbDestReceived.inTransit, 0, 'PostgreSQL destination inTransit must decrement to 0 on receive');
+    assert.equal(dbDestReceived.onHand, 75, 'PostgreSQL destination onHand must increment to 75 on receive');
   });
 
   test('PostgreSQL concurrency safety: sequential transfers properly serialize with row-level locks', async () => {
-    // South MED-01: onHand = 190, safetyStock = 40. Safe surplus = 150.
-    // North capacity = 95.
-    // First transfer of 90 units
+    // South MED-01: onHand = 190, targetStock = 100. Safe surplus above target = 90.
+    // First transfer of 90 units reserves all surplus
     await executeTransfer({
       skuId: 'SKU-MED-01',
       fromDepotId: 'depot-south',
@@ -80,36 +111,37 @@ describe('PostgreSQL & Prisma Persistence Integration', () => {
       quantity: 90
     });
 
-    // Directly verify South onHand in PostgreSQL is 100
+    // Directly verify South reserved in PostgreSQL is 90
     const dbSouth = await prisma.inventoryLevel.findFirst({
       where: { depotId: 'depot-south', skuId: 'SKU-MED-01' }
     });
-    assert.equal(dbSouth.onHand, 100);
+    assert.equal(dbSouth.onHand, 190);
+    assert.equal(dbSouth.reserved, 90);
 
-    // Attempting another transfer that would breach South safety stock (40) is rejected
+    // Attempting another transfer that would breach South target stock (100) is rejected
     await assert.rejects(
       async () => {
         await executeTransfer({
           skuId: 'SKU-MED-01',
           fromDepotId: 'depot-south',
           toDepotId: 'depot-north',
-          quantity: 70 // 100 - 70 = 30 < 40
+          quantity: 10
         });
       },
       {
-        message: /safety stock/i
+        message: /target stock/i
       }
     );
 
-    // Verify rollback: South onHand in PostgreSQL remains 100
+    // Verify rollback: South reserved in PostgreSQL remains 90
     const dbSouthAfter = await prisma.inventoryLevel.findFirst({
       where: { depotId: 'depot-south', skuId: 'SKU-MED-01' }
     });
-    assert.equal(dbSouthAfter.onHand, 100, 'Rollback ensures onHand remains unchanged on rejection');
+    assert.equal(dbSouthAfter.reserved, 90, 'Rollback ensures reservation remains unchanged on rejection');
   });
 
   test('resetState restores PostgreSQL database back to synthetic baseline', async () => {
-    // Execute a transfer to modify DB state
+    // Mutate state with transfer
     await executeTransfer({
       skuId: 'SKU-MED-01',
       fromDepotId: 'depot-south',
@@ -117,19 +149,22 @@ describe('PostgreSQL & Prisma Persistence Integration', () => {
       quantity: 50
     });
 
-    const beforeResetTransfers = await prisma.transfer.count();
-    assert.ok(beforeResetTransfers >= 1);
+    // Verify transfer exists
+    const beforeCount = await prisma.transfer.count();
+    assert.equal(beforeCount, 1);
 
-    // Call resetState
+    // Reset
     await resetState();
 
-    // Verify DB restored
-    const afterResetTransfers = await prisma.transfer.count();
-    assert.equal(afterResetTransfers, 0, 'Transfers should be reset to 0 in PostgreSQL');
+    // Verify database tables are restored back to pristine synthetic seed
+    const afterCount = await prisma.transfer.count();
+    assert.equal(afterCount, 0);
 
-    const dbSouth = await prisma.inventoryLevel.findFirst({
+    const southMed = await prisma.inventoryLevel.findFirst({
       where: { depotId: 'depot-south', skuId: 'SKU-MED-01' }
     });
-    assert.equal(dbSouth.onHand, 190, 'South MED-01 restored to baseline 190 in PostgreSQL');
+    assert.equal(southMed.onHand, 190);
+    assert.equal(southMed.reserved, 0);
+    assert.equal(southMed.inTransit, 0);
   });
 });

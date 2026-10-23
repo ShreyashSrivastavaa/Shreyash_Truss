@@ -1,5 +1,5 @@
 import React from 'react';
-import { Warehouse, MapPin, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
+import { Warehouse, MapPin, Truck, Lock } from 'lucide-react';
 
 export default function InventoryGrid({ depots, inventory }) {
   if (!depots || !inventory) return null;
@@ -42,6 +42,9 @@ export default function InventoryGrid({ depots, inventory }) {
                   const percentOfTarget = Math.min(100, Math.round((item.onHand / item.targetStock) * 100));
                   const isDeficit = item.status === 'DEFICIT';
                   const isSurplus = item.status === 'SURPLUS';
+                  const reserved = item.reserved ?? 0;
+                  const inTransit = item.inTransit ?? 0;
+                  const netAvailable = item.netAvailable ?? (item.onHand - reserved);
 
                   let badgeColor = 'bg-slate-800 text-slate-300 border-slate-700';
                   let barColor = 'bg-indigo-500';
@@ -58,15 +61,32 @@ export default function InventoryGrid({ depots, inventory }) {
                     <div key={item.skuId} className="bg-slate-900/60 rounded-md p-3 border border-slate-800/60">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-xs font-semibold text-slate-200">{item.skuName}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}`}>
-                          {item.status}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {inTransit > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                              <Truck className="w-2.5 h-2.5 animate-pulse" />
+                              +{inTransit} In-Transit
+                            </span>
+                          )}
+                          {reserved > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              <Lock className="w-2.5 h-2.5" />
+                              -{reserved} Reserved
+                            </span>
+                          )}
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}`}>
+                            {item.status}
+                          </span>
+                        </div>
                       </div>
 
                       {/* On-hand vs Thresholds */}
                       <div className="flex items-baseline justify-between text-xs text-slate-300 my-1">
                         <div>
                           On-Hand: <span className="font-bold text-white text-sm">{item.onHand}</span> {item.unit}
+                          <span className="text-slate-500 text-[11px] ml-1.5">
+                            (Avail: <strong className="text-slate-300">{netAvailable}</strong>)
+                          </span>
                         </div>
                         <div className="text-[11px] text-slate-400 space-x-2">
                           <span>Safety: <strong className="text-slate-300">{item.safetyStock}</strong></span>

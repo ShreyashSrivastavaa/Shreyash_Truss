@@ -48,13 +48,37 @@ export async function fetchTransferHistory() {
   return handleResponse(res);
 }
 
-export async function executeTransfer(transferPayload) {
+export async function createTransfer(transferPayload) {
   const res = await fetch('/api/transfers', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(transferPayload)
+  });
+  return handleResponse(res);
+}
+
+// Backwards-compatible alias for executeTransfer
+export const executeTransfer = createTransfer;
+
+export async function dispatchTransfer(transferId) {
+  const res = await fetch(`/api/transfers/${encodeURIComponent(transferId)}/dispatch`, {
+    method: 'POST'
+  });
+  return handleResponse(res);
+}
+
+export async function receiveTransfer(transferId) {
+  const res = await fetch(`/api/transfers/${encodeURIComponent(transferId)}/receive`, {
+    method: 'POST'
+  });
+  return handleResponse(res);
+}
+
+export async function cancelTransfer(transferId) {
+  const res = await fetch(`/api/transfers/${encodeURIComponent(transferId)}/cancel`, {
+    method: 'POST'
   });
   return handleResponse(res);
 }

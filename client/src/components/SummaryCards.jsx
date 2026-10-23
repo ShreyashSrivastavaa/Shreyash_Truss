@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, CheckCircle2, TrendingUp, Warehouse } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, TrendingUp, Warehouse, Truck } from 'lucide-react';
 
 export default function SummaryCards({ summary }) {
   if (!summary) return null;
@@ -19,7 +19,7 @@ export default function SummaryCards({ summary }) {
     {
       title: 'Available Surpluses',
       value: summary.surplusesCount,
-      description: 'Stock available for rebalancing',
+      description: 'Stock available above target',
       icon: TrendingUp,
       color: 'emerald',
       border: 'border-emerald-500/30',
@@ -28,14 +28,25 @@ export default function SummaryCards({ summary }) {
       badge: 'Transferable'
     },
     {
-      title: 'Balanced Stock',
-      value: summary.balancedCount,
-      description: 'Between safety and target levels',
-      icon: CheckCircle2,
+      title: 'In-Transit Freight',
+      value: `${summary.inTransitUnits ?? 0} units`,
+      description: 'En route between regional depots',
+      icon: Truck,
       color: 'sky',
       border: 'border-sky-500/30',
       bg: 'bg-sky-500/10',
       text: 'text-sky-400',
+      badge: 'Pipeline'
+    },
+    {
+      title: 'Balanced Stock',
+      value: summary.balancedCount,
+      description: 'Between safety and target levels',
+      icon: CheckCircle2,
+      color: 'indigo',
+      border: 'border-indigo-500/30',
+      bg: 'bg-indigo-500/10',
+      text: 'text-indigo-400',
       badge: 'Stable'
     },
     {
@@ -43,16 +54,16 @@ export default function SummaryCards({ summary }) {
       value: `${summary.totalDepots} Depots / ${summary.totalSkus} SKUs`,
       description: `${summary.totalTrackedItems} total facility-SKU positions`,
       icon: Warehouse,
-      color: 'indigo',
-      border: 'border-indigo-500/30',
-      bg: 'bg-indigo-500/10',
-      text: 'text-indigo-400',
+      color: 'slate',
+      border: 'border-slate-800',
+      bg: 'bg-slate-800/60',
+      text: 'text-slate-300',
       badge: 'Connected'
     }
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       {cards.map((card, index) => {
         const Icon = card.icon;
         return (
@@ -70,7 +81,7 @@ export default function SummaryCards({ summary }) {
               <span className="text-2xl font-extrabold text-white">{card.value}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2 border-t border-slate-800/80">
-              <span className="truncate">{card.description}</span>
+              <span className="truncate text-[11px]">{card.description}</span>
               <Icon className={`w-4 h-4 ${card.text} shrink-0`} />
             </div>
           </div>
