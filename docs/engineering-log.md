@@ -135,3 +135,32 @@
   - Full suite of 18 tests passing (18/18) with `--test-concurrency=1`.
   - Full frontend production build verified (`vite build`).
   - End-to-end browser subagent verified live transfer dispatch, inventory reconciliation, and demo reset backed by active PostgreSQL instance.
+
+## Decision 009: Transfer Lifecycle State Machine, Custody Accounting & Concurrency Hardening (Day 3)
+- **Date:** 2026-10-26
+- **Context:** The prototype previously executed transfers instantaneously between depots. Real-world supply networks require explicit custody stages: staging goods at the origin dock, moving goods via freight carriers, and receiving goods into destination inventory, with full conservation and concurrency guarantees.
+- **Architectural & Business Logic Decisions:**
+  1. *Four-Stage Lifecycle State Machine:*
+     - `PENDING`: Staged transfer order. Origin depot reserves quantity (`reserved += Q`). Physical `onHand` remains unchanged.
+     - `IN_TRANSIT`: Freight dispatched from origin dock. Source decrements physical `onHand -= Q` and releases reservation (`reserved -= Q`); destination increments `inTransit += Q`.
+     - `RECEIVED`: Freight arrived and stocked at destination dock. Destination decrements `inTransit -= Q` and increments physical `onHand += Q`.
+     - `CANCELLED`: Order aborted prior to dispatch. Origin reservation is released (`reserved -= Q`). Cancellation of in-transit freight is strictly prohibited (HTTP 400).
+  2. *Physical Stock Conservation Law:*
+     - Across all transitions, the network total physical stock is strictly conserved: $\Delta(\sum_{\text{network}} \text{onHand} + \sum_{\text{network}} \text{inTransit}) \equiv 0$.
+     - Non-negative floors (`Math.max(0, ...)`) prevent negative values on all decrements.
+  3. *Target-Stock Protection vs. Safety-Stock Distinction:*
+     - Safety stock (`safetyStock`) defines the operational deficit threshold (`onHand < safetyStock`).
+     - Target stock (`targetStock`) defines the optimal holding level and surplus threshold (`onHand > targetStock`).
+     - Donor protection enforces that a transfer can never deplete donor stock below its `targetStock` (`onHand - reserved - Q >= targetStock`).
+     - Recipient capacity enforces that intake cannot exceed remaining capacity to `targetStock` (`onHand + inTransit + pendingInbound + Q <= targetStock`).
+  4. *Inbound Pipeline Shortage Deduplication:*
+     - `getTransferOpportunities` dynamically queries all `PENDING` and `IN_TRANSIT` inbound transfers, subtracting pipeline quantities from recipient shortages to prevent duplicate rebalancing recommendations.
+  5. *Deterministic Concurrency Locking:*
+     - To eliminate deadlock risks during concurrent bidirectional transfers between identical depots, all raw `InventoryLevel` row-locking queries append `ORDER BY "depotId" ASC, "skuId" ASC FOR UPDATE`.
+  6. *Route Validation & Production Security:*
+     - Parameter `:id` validation across `/:id/dispatch`, `/:id/receive`, and `/:id/cancel` standardized using reusable Zod schema `transferIdParamSchema`.
+     - `POST /api/inventory/reset` guarded against production invocation (`NODE_ENV === 'production'` returns HTTP 403 Forbidden).
+- **Verification:**
+  - Expanded test suite from 18 to 33 passing automated tests across 6 suites (`inventory.test.js`, `persistence.test.js`, `regression.test.js`, `lifecycle.test.js`, `httpLifecycle.test.js`).
+  - Production build compiled cleanly (`vite build` in 4.92s).
+  - Autonomous browser subagent executed full 8-step workflow on live PostgreSQL storage, validating staging, dispatch, receipt, cancellation, responsive viewports, and reset flow.

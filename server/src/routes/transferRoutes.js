@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createTransferSchema } from '../schemas/transferSchema.js';
+import { createTransferSchema, transferIdParamSchema } from '../schemas/transferSchema.js';
 import {
   getTransferOpportunities,
   createTransfer,
@@ -67,13 +67,19 @@ router.post('/', async (req, res) => {
 
 // POST /api/transfers/:id/dispatch - dispatches a PENDING transfer to IN_TRANSIT
 router.post('/:id/dispatch', async (req, res) => {
-  const { id } = req.params;
-  if (!id || typeof id !== 'string' || id.trim() === '') {
-    return res.status(400).json({ error: 'Valid transfer ID is required' });
+  const validationResult = transferIdParamSchema.safeParse(req.params);
+  if (!validationResult.success) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: (validationResult.error.issues || []).map(err => ({
+        field: err.path.join('.'),
+        message: err.message
+      }))
+    });
   }
 
   try {
-    const result = await dispatchTransfer(id.trim());
+    const result = await dispatchTransfer(validationResult.data.id);
     res.status(200).json({
       message: 'Transfer dispatched successfully',
       ...result
@@ -88,13 +94,19 @@ router.post('/:id/dispatch', async (req, res) => {
 
 // POST /api/transfers/:id/receive - marks an IN_TRANSIT transfer as RECEIVED
 router.post('/:id/receive', async (req, res) => {
-  const { id } = req.params;
-  if (!id || typeof id !== 'string' || id.trim() === '') {
-    return res.status(400).json({ error: 'Valid transfer ID is required' });
+  const validationResult = transferIdParamSchema.safeParse(req.params);
+  if (!validationResult.success) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: (validationResult.error.issues || []).map(err => ({
+        field: err.path.join('.'),
+        message: err.message
+      }))
+    });
   }
 
   try {
-    const result = await receiveTransfer(id.trim());
+    const result = await receiveTransfer(validationResult.data.id);
     res.status(200).json({
       message: 'Transfer received successfully',
       ...result
@@ -109,13 +121,19 @@ router.post('/:id/receive', async (req, res) => {
 
 // POST /api/transfers/:id/cancel - cancels a PENDING transfer and releases reserved inventory
 router.post('/:id/cancel', async (req, res) => {
-  const { id } = req.params;
-  if (!id || typeof id !== 'string' || id.trim() === '') {
-    return res.status(400).json({ error: 'Valid transfer ID is required' });
+  const validationResult = transferIdParamSchema.safeParse(req.params);
+  if (!validationResult.success) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: (validationResult.error.issues || []).map(err => ({
+        field: err.path.join('.'),
+        message: err.message
+      }))
+    });
   }
 
   try {
-    const result = await cancelTransfer(id.trim());
+    const result = await cancelTransfer(validationResult.data.id);
     res.status(200).json({
       message: 'Transfer cancelled successfully',
       ...result

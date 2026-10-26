@@ -286,6 +286,7 @@ export async function createTransfer({ skuId, fromDepotId, toDepotId, quantity }
         FROM "InventoryLevel"
         WHERE ("depotId" = ${fromDepotId} AND "skuId" = ${skuId})
            OR ("depotId" = ${toDepotId} AND "skuId" = ${skuId})
+        ORDER BY "depotId" ASC, "skuId" ASC
         FOR UPDATE
       `;
 
@@ -482,6 +483,7 @@ export async function dispatchTransfer(transferId) {
         FROM "InventoryLevel"
         WHERE ("depotId" = ${transferRecord.fromDepotId} AND "skuId" = ${transferRecord.skuId})
            OR ("depotId" = ${transferRecord.toDepotId} AND "skuId" = ${transferRecord.skuId})
+        ORDER BY "depotId" ASC, "skuId" ASC
         FOR UPDATE
       `;
 
@@ -606,6 +608,7 @@ export async function receiveTransfer(transferId) {
         SELECT id, "depotId", "skuId", "onHand", reserved, "inTransit", "safetyStock", "targetStock"
         FROM "InventoryLevel"
         WHERE "depotId" = ${transferRecord.toDepotId} AND "skuId" = ${transferRecord.skuId}
+        ORDER BY "depotId" ASC, "skuId" ASC
         FOR UPDATE
       `;
       const destRow = lockedRows[0];
@@ -719,6 +722,7 @@ export async function cancelTransfer(transferId) {
         SELECT id, "depotId", "skuId", "onHand", reserved, "inTransit", "safetyStock", "targetStock"
         FROM "InventoryLevel"
         WHERE "depotId" = ${transferRecord.fromDepotId} AND "skuId" = ${transferRecord.skuId}
+        ORDER BY "depotId" ASC, "skuId" ASC
         FOR UPDATE
       `;
       const sourceRow = lockedRows[0];

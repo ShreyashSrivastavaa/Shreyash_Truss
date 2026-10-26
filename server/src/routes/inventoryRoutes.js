@@ -37,8 +37,14 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/inventory/reset - resets synthetic state back to default baseline
+// POST /api/inventory/reset - resets synthetic state back to default baseline (disabled in production)
 router.post('/reset', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({
+      error: 'Reset endpoint is disabled in production environments'
+    });
+  }
+
   try {
     await resetState();
     res.status(200).json({ message: 'Inventory state reset to initial synthetic baseline' });

@@ -233,4 +233,79 @@ describe('HTTP API Transfer Lifecycle & State Machine Integration (Day 3)', () =
     const jsonDonorBreach = await resDonorBreach.json();
     assert.match(jsonDonorBreach.error, /target stock threshold/);
   });
+
+  test('HTTP 400 Validation on Invalid Transfer ID Params across dispatch, receive, and cancel', async () => {
+    // Blank/whitespace id parameter via Zod transferIdParamSchema
+    for (const action of ['dispatch', 'receive', 'cancel']) {
+      const res = await fetch(`${baseUrl}/api/transfers/%20/${action}`, {
+        method: 'POST'
+      });
+      assert.equal(res.status, 400, `Expected 400 for ${action} with blank id`);
+      const json = await res.json();
+      assert.equal(json.error, 'Validation failed');
+      assert.ok(json.details.some(d => d.message.includes('Transfer ID is required and cannot be empty')));
+    }
+  });
+
+  test('Production reset requests are rejected with HTTP 403 without modifying database state', async () => {
+    // 1. Stage a transfer first
+    const createRes = await fetch(`${baseUrl}/api/transfers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        skuId: 'SKU-MED-01',
+        fromDepotId: 'depot-south',
+        toDepotId: 'depot-north',
+        quantity: 25
+      })
+    });
+    assert.equal(createRes.status, 201);
+    const createJson = await createRes.json();
+    const transferId = createJson.transfer.id;
+
+    // 2. Set NODE_ENV to production
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+
+    try {
+      // 3. Attempt reset while in production
+      const resetRes = await fetch(`${baseUrl}/api/inventory/reset`, {
+        method: 'POST'
+      });
+      assert.equal(resetRes.status, 403);
+      const resetJson = await resetRes.json();
+      assert.equal(resetJson.error, 'Reset endpoint is disabled in production environments');
+
+      // 4. Verify database state was NOT modified: transfer must still exist
+      if (prisma) {
+        const persistedTransfer = await prisma.transfer.findUnique({
+          where: { id: transferId }
+        });
+        assert.ok(persistedTransfer, 'Transfer record must not be wiped when reset is rejected in production');
+
+        const dbSource = await prisma.inventoryLevel.findFirst({
+          where: { depotId: 'depot-south', skuId: 'SKU-MED-01' }
+        });
+        assert.equal(dbSource.reserved, 25, 'Source reservation must be preserved');
+      }
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
+  });
+
+  test('Development and test reset behavior remains functional', async () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
+
+    try {
+      const resetRes = await fetch(`${baseUrl}/api/inventory/reset`, {
+        method: 'POST'
+      });
+      assert.equal(resetRes.status, 200);
+      const resetJson = await resetRes.json();
+      assert.equal(resetJson.message, 'Inventory state reset to initial synthetic baseline');
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
+  });
 });

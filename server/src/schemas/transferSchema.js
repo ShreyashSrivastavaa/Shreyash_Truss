@@ -9,3 +9,7 @@ export const createTransferSchema = z.object({
   message: 'Source and destination depots must be different',
   path: ['toDepotId']
 });
+
+export const transferIdParamSchema = z.object({
+  id: z.string().trim().min(1, 'Transfer ID is required and cannot be empty')
+});

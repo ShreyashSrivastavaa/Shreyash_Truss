@@ -226,4 +226,72 @@ describe('Transfer Lifecycle & Inventory Accounting (Day 3)', () => {
       }
     );
   });
+
+  test('concurrent and bidirectional transfers preserve target-stock protection and physical inventory conservation', async () => {
+    // Initial Network Physical Units:
+    // SKU-MED-01: 25 (North) + 190 (South) + 70 (East) = 285 units
+    // SKU-IND-02: 150 (North) + 20 (South) + 40 (East) = 210 units
+    // Total physical across network = 495 units
+
+    // Fire concurrent bidirectional transfers touching the same two depots in opposite directions:
+    // Transfer 1: South -> North (50 units of SKU-MED-01)
+    // Transfer 2: North -> South (40 units of SKU-IND-02)
+    const [t1Res, t2Res] = await Promise.all([
+      createTransfer({
+        skuId: 'SKU-MED-01',
+        fromDepotId: 'depot-south',
+        toDepotId: 'depot-north',
+        quantity: 50
+      }),
+      createTransfer({
+        skuId: 'SKU-IND-02',
+        fromDepotId: 'depot-north',
+        toDepotId: 'depot-south',
+        quantity: 40
+      })
+    ]);
+
+    assert.equal(t1Res.transfer.status, 'PENDING');
+    assert.equal(t2Res.transfer.status, 'PENDING');
+    assert.equal(t1Res.updatedSource.reserved, 50);
+    assert.equal(t2Res.updatedSource.reserved, 40);
+
+    // Verify physical stock invariant holds during concurrent staging
+    const stagedStatus = await getInventoryStatus();
+    const stagedPhysicalTotal = stagedStatus.reduce((sum, i) => sum + i.onHand + i.inTransit, 0);
+    assert.equal(stagedPhysicalTotal, 495, 'Total network physical stock must be strictly conserved at 495');
+
+    // Concurrent dispatch
+    const [d1Res, d2Res] = await Promise.all([
+      dispatchTransfer(t1Res.transfer.id),
+      dispatchTransfer(t2Res.transfer.id)
+    ]);
+    assert.equal(d1Res.transfer.status, 'IN_TRANSIT');
+    assert.equal(d2Res.transfer.status, 'IN_TRANSIT');
+
+    // Verify physical stock invariant holds while both shipments are in transit
+    const transitStatus = await getInventoryStatus();
+    const transitPhysicalTotal = transitStatus.reduce((sum, i) => sum + i.onHand + i.inTransit, 0);
+    assert.equal(transitPhysicalTotal, 495, 'Total network physical stock must be strictly conserved during transit');
+
+    // Concurrent receive
+    const [r1Res, r2Res] = await Promise.all([
+      receiveTransfer(t1Res.transfer.id),
+      receiveTransfer(t2Res.transfer.id)
+    ]);
+    assert.equal(r1Res.transfer.status, 'RECEIVED');
+    assert.equal(r2Res.transfer.status, 'RECEIVED');
+
+    // Final inventory levels and stock conservation check
+    const finalStatus = await getInventoryStatus();
+    const finalPhysicalTotal = finalStatus.reduce((sum, i) => sum + i.onHand + i.inTransit, 0);
+    assert.equal(finalPhysicalTotal, 495, 'Total network physical stock must remain exactly 495 after receipt');
+
+    const northMed = finalStatus.find(i => i.depotId === 'depot-north' && i.skuId === 'SKU-MED-01');
+    const southInd = finalStatus.find(i => i.depotId === 'depot-south' && i.skuId === 'SKU-IND-02');
+    assert.equal(northMed.onHand, 75, 'North MED-01 onHand updated from 25 to 75');
+    assert.equal(northMed.status, 'BALANCED');
+    assert.equal(southInd.onHand, 60, 'South IND-02 onHand updated from 20 to 60');
+    assert.equal(southInd.status, 'BALANCED');
+  });
 });
