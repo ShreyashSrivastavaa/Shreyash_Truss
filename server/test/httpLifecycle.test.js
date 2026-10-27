@@ -308,4 +308,24 @@ describe('HTTP API Transfer Lifecycle & State Machine Integration (Day 3)', () =
       process.env.NODE_ENV = originalEnv;
     }
   });
+
+  test('GET /api/inventory returns authoritative network summary with totalOnHandUnits', async () => {
+    const invRes = await fetch(`${baseUrl}/api/inventory`);
+    assert.equal(invRes.status, 200);
+    const data = await invRes.json();
+
+    assert.ok(data.summary);
+    assert.equal(data.summary.totalOnHandUnits, 495);
+    assert.equal(data.summary.inTransitUnits, 0);
+    assert.equal(data.summary.reservedUnits, 0);
+    assert.equal(data.summary.deficitsCount, 2);
+    assert.equal(data.summary.surplusesCount, 2);
+    assert.equal(data.summary.balancedCount, 2);
+    assert.equal(data.summary.totalDepots, 3);
+    assert.equal(data.summary.totalSkus, 2);
+    assert.equal(data.summary.totalTrackedItems, 6);
+    assert.equal(data.inventory.length, 6);
+    assert.equal(data.depots.length, 3);
+    assert.equal(data.skus.length, 2);
+  });
 });

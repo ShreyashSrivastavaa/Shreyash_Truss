@@ -16,12 +16,14 @@ router.get('/', async (req, res) => {
     const balanced = items.filter(i => i.status === 'BALANCED').length;
     const inTransitUnits = items.reduce((sum, i) => sum + (i.inTransit || 0), 0);
     const reservedUnits = items.reduce((sum, i) => sum + (i.reserved || 0), 0);
+    const totalOnHandUnits = items.reduce((sum, i) => sum + (i.onHand || 0), 0);
 
     res.status(200).json({
       summary: {
         totalDepots: depots.length,
         totalSkus: skus.length,
         totalTrackedItems: items.length,
+        totalOnHandUnits,
         deficitsCount: deficits,
         surplusesCount: surpluses,
         balancedCount: balanced,

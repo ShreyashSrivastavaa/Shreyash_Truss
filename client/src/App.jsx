@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import SummaryCards from './components/SummaryCards';
+import InventoryAnalytics from './components/InventoryAnalytics';
 import OpportunityList from './components/OpportunityList';
 import InventoryGrid from './components/InventoryGrid';
 import TransferLog from './components/TransferLog';
@@ -139,10 +140,14 @@ export default function App() {
           </div>
         )}
 
-        {/* 1. Dashboard Overview KPI Cards */}
-        {inventoryData?.summary && (
-          <SummaryCards summary={inventoryData.summary} />
-        )}
+        {/* 1. Network Inventory Analytics & KPI Overview */}
+        <InventoryAnalytics
+          summary={inventoryData?.summary}
+          depots={inventoryData?.depots}
+          inventory={inventoryData?.inventory}
+          skus={inventoryData?.skus}
+          isLoading={isLoading}
+        />
 
         {/* 2. Detected Transfer Opportunities (Action Section) */}
         <OpportunityList
