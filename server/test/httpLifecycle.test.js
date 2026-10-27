@@ -328,4 +328,87 @@ describe('HTTP API Transfer Lifecycle & State Machine Integration (Day 3)', () =
     assert.equal(data.depots.length, 3);
     assert.equal(data.skus.length, 2);
   });
+
+  test('GET /api/transfers supports bounded pagination, validation, and deterministic ordering', async () => {
+    // Create 2 transfers first
+    const createRes1 = await fetch(`${baseUrl}/api/transfers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        skuId: 'SKU-MED-01',
+        fromDepotId: 'depot-south',
+        toDepotId: 'depot-north',
+        quantity: 10
+      })
+    });
+    const trf1 = await createRes1.json();
+
+    const createRes2 = await fetch(`${baseUrl}/api/transfers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        skuId: 'SKU-IND-02',
+        fromDepotId: 'depot-north',
+        toDepotId: 'depot-south',
+        quantity: 15
+      })
+    });
+    const trf2 = await createRes2.json();
+
+    // 1. Unbounded fetch preserves backward compatibility for existing unpaginated callers
+    const allRes = await fetch(`${baseUrl}/api/transfers`);
+    assert.equal(allRes.status, 200);
+    const allData = await allRes.json();
+    assert.equal(allData.count, 2);
+    assert.equal(allData.transfers.length, 2);
+
+    // Deterministic ordering: latest created is first, tie-broken by id DESC
+    assert.equal(allData.transfers[0].id, trf2.transfer.id);
+    assert.equal(allData.transfers[1].id, trf1.transfer.id);
+
+    // 2. Bounded fetch: limit 1, offset 0
+    const pagedRes1 = await fetch(`${baseUrl}/api/transfers?limit=1&offset=0`);
+    assert.equal(pagedRes1.status, 200);
+    const pagedData1 = await pagedRes1.json();
+    assert.equal(pagedData1.count, 1);
+    assert.equal(pagedData1.transfers[0].id, trf2.transfer.id);
+
+    // 3. Bounded fetch: limit 1, offset 1
+    const pagedRes2 = await fetch(`${baseUrl}/api/transfers?limit=1&offset=1`);
+    assert.equal(pagedRes2.status, 200);
+    const pagedData2 = await pagedRes2.json();
+    assert.equal(pagedData2.count, 1);
+    assert.equal(pagedData2.transfers[0].id, trf1.transfer.id);
+
+    // 4. Default page size (50) applied when offset is supplied without limit
+    const offsetOnlyRes = await fetch(`${baseUrl}/api/transfers?offset=0`);
+    assert.equal(offsetOnlyRes.status, 200);
+    const offsetOnlyData = await offsetOnlyRes.json();
+    assert.equal(offsetOnlyData.count, 2);
+
+    // 5. Page size capped at 500 when requesting excessively large limit
+    const largeLimitRes = await fetch(`${baseUrl}/api/transfers?limit=1000`);
+    assert.equal(largeLimitRes.status, 200);
+    const largeLimitData = await largeLimitRes.json();
+    assert.equal(largeLimitData.count, 2);
+
+    // 6. HTTP 400 Validation on negative, fractional, or malformed pagination params
+    const invalidParams = [
+      'limit=-1',
+      'limit=-10',
+      'offset=-5',
+      'limit=abc',
+      'limit=1.5',
+      'offset=2.5',
+      'offset=2000000' // exceeds 1,000,000 max offset bound
+    ];
+
+    for (const param of invalidParams) {
+      const res = await fetch(`${baseUrl}/api/transfers?${param}`);
+      assert.equal(res.status, 400, `Expected HTTP 400 for invalid query parameter: ${param}`);
+      const json = await res.json();
+      assert.equal(json.error, 'Validation failed');
+      assert.ok(Array.isArray(json.details) && json.details.length > 0);
+    }
+  });
 });

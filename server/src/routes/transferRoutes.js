@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { createTransferSchema, transferIdParamSchema } from '../schemas/transferSchema.js';
+import {
+  createTransferSchema,
+  transferIdParamSchema,
+  transferPaginationQuerySchema
+} from '../schemas/transferSchema.js';
 import {
   getTransferOpportunities,
   createTransfer,
@@ -25,10 +29,35 @@ router.get('/opportunities', async (req, res) => {
   }
 });
 
-// GET /api/transfers - lists transfer history
+// GET /api/transfers - lists transfer history (supports bounded pagination via optional limit and offset)
 router.get('/', async (req, res) => {
+  const validationResult = transferPaginationQuerySchema.safeParse(req.query);
+  if (!validationResult.success) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: (validationResult.error.issues || []).map(err => ({
+        field: err.path.join('.'),
+        message: err.message
+      }))
+    });
+  }
+
   try {
-    const history = await getTransferHistory();
+    const { limit: rawLimit, offset: rawOffset } = validationResult.data;
+    let limit;
+    let offset;
+
+    // Preserve unpaginated behavior when neither pagination parameter is supplied
+    if (rawLimit !== undefined || rawOffset !== undefined) {
+      const parsedOffset = rawOffset !== undefined ? parseInt(rawOffset, 10) : 0;
+      offset = parsedOffset;
+
+      // Default page size is 50 when pagination is requested without an explicit limit; max page size is 500
+      const parsedLimit = rawLimit !== undefined ? parseInt(rawLimit, 10) : 50;
+      limit = Math.min(parsedLimit, 500);
+    }
+
+    const history = await getTransferHistory({ limit, offset });
     res.status(200).json({
       count: history.length,
       transfers: history

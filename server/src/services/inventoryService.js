@@ -798,13 +798,19 @@ export async function cancelTransfer(transferId) {
 }
 
 /**
- * Retrieve transfer history log
+ * Retrieve transfer history log (supports bounded pagination via optional limit and offset)
  */
-export async function getTransferHistory() {
+export async function getTransferHistory(options = {}) {
+  const { limit, offset } = options;
   if (prisma) {
     try {
       const records = await prisma.transfer.findMany({
-        orderBy: { createdAt: 'desc' }
+        orderBy: [
+          { createdAt: 'desc' },
+          { id: 'desc' }
+        ],
+        ...(typeof limit === 'number' && !isNaN(limit) ? { take: limit } : {}),
+        ...(typeof offset === 'number' && !isNaN(offset) ? { skip: offset } : {})
       });
       return records.map(r => ({
         ...r,
@@ -814,5 +820,19 @@ export async function getTransferHistory() {
       // Fallback
     }
   }
-  return transfers;
+  let result = [...transfers].sort((a, b) => {
+    const timeA = new Date(a.createdAt || 0).getTime();
+    const timeB = new Date(b.createdAt || 0).getTime();
+    if (timeB !== timeA) {
+      return timeB - timeA;
+    }
+    return String(b.id || '').localeCompare(String(a.id || ''));
+  });
+  if (typeof offset === 'number' && !isNaN(offset) && offset >= 0) {
+    result = result.slice(offset);
+  }
+  if (typeof limit === 'number' && !isNaN(limit) && limit >= 0) {
+    result = result.slice(0, limit);
+  }
+  return result;
 }

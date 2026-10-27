@@ -13,3 +13,17 @@ export const createTransferSchema = z.object({
 export const transferIdParamSchema = z.object({
   id: z.string().trim().min(1, 'Transfer ID is required and cannot be empty')
 });
+
+export const transferPaginationQuerySchema = z.object({
+  limit: z.string().regex(/^\d+$/, 'limit must be a non-negative integer').optional(),
+  offset: z.string().regex(/^\d+$/, 'offset must be a non-negative integer').optional()
+}).refine(data => {
+  if (data.offset !== undefined) {
+    const num = Number(data.offset);
+    if (num > 1000000) return false;
+  }
+  return true;
+}, {
+  message: 'offset must not exceed 1000000',
+  path: ['offset']
+});

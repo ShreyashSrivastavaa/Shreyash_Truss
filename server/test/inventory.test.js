@@ -182,4 +182,40 @@ describe('Multi-Depot Inventory Balancing Domain Logic', () => {
     assert.equal(updatedMedOpp.maxTransferable, 75); // 190 - 15 - 100 = 75
     assert.equal(updatedMedOpp.recommendedQuantity, 75); // min(80 remaining shortage, 75 donor surplus above target) = 75
   });
+
+  test('getTransferHistory supports deterministic tie-breaker sorting, limit, and offset', async () => {
+    await executeTransfer({
+      skuId: 'SKU-MED-01',
+      fromDepotId: 'depot-south',
+      toDepotId: 'depot-north',
+      quantity: 10
+    });
+    await executeTransfer({
+      skuId: 'SKU-IND-02',
+      fromDepotId: 'depot-north',
+      toDepotId: 'depot-south',
+      quantity: 15
+    });
+
+    // Unpaginated: returns both records
+    const all = await getTransferHistory();
+    assert.equal(all.length, 2);
+    // Deterministic ordering: most recent created first, tie-broken by id DESC
+    assert.equal(all[0].skuId, 'SKU-IND-02');
+    assert.equal(all[1].skuId, 'SKU-MED-01');
+
+    // Limit 1, offset 0: returns the first record
+    const page1 = await getTransferHistory({ limit: 1, offset: 0 });
+    assert.equal(page1.length, 1);
+    assert.equal(page1[0].skuId, 'SKU-IND-02');
+
+    // Limit 1, offset 1: returns the second record
+    const page2 = await getTransferHistory({ limit: 1, offset: 1 });
+    assert.equal(page2.length, 1);
+    assert.equal(page2[0].skuId, 'SKU-MED-01');
+
+    // Offset out of range: returns empty array
+    const emptyPage = await getTransferHistory({ limit: 10, offset: 10 });
+    assert.equal(emptyPage.length, 0);
+  });
 });

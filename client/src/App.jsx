@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import SummaryCards from './components/SummaryCards';
 import InventoryAnalytics from './components/InventoryAnalytics';
+import TransferLaneAnalytics from './components/TransferLaneAnalytics';
 import OpportunityList from './components/OpportunityList';
 import InventoryGrid from './components/InventoryGrid';
 import TransferLog from './components/TransferLog';
@@ -164,7 +165,15 @@ export default function App() {
           />
         )}
 
-        {/* 4. Active Shipments Pipeline & Audit Log */}
+        {/* 4. Transfer Lane Analytics & Freight Flow */}
+        <TransferLaneAnalytics
+          transfers={transfers}
+          depots={inventoryData?.depots}
+          skus={inventoryData?.skus}
+          isLoading={isLoading}
+        />
+
+        {/* 5. Active Shipments Pipeline & Audit Log */}
         <TransferLog
           transfers={transfers}
           onDispatch={handleDispatchTransfer}
