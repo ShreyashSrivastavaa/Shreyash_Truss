@@ -113,20 +113,22 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
   }
 
   return (
-    <section className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-lg backdrop-blur-xs space-y-5" aria-label="Transfer Lane Analytics Section">
+    <section className="bg-slate-900/75 border border-slate-800/80 rounded-xl p-4 sm:p-5 shadow-xs backdrop-blur-xs space-y-5" aria-label="Transfer Lane Analytics Section">
       {/* 1. Header & View Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-800/80 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 shrink-0">
             <ArrowLeftRight className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-100 flex items-center gap-2">
-              Transfer Lane Analytics & Freight Flow
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-normal normal-case">
-                {transfers.length} Total Records
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-semibold tracking-normal text-slate-100">
+                Transfer Lane Analytics & Freight Flow
+              </h2>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
+                {transfers.length} Records
               </span>
-            </h2>
+            </div>
             <p className="text-xs text-slate-400 mt-0.5">
               Depot-to-depot routing lane volume, fulfillment metrics, and multi-facility throughput
             </p>
@@ -134,33 +136,36 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
         </div>
 
         {/* View Switcher Tabs */}
-        <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-lg border border-slate-800 text-xs self-start sm:self-auto">
+        <div className="flex items-center gap-1 bg-slate-950/90 p-1 rounded-lg border border-slate-800 text-xs self-start sm:self-auto">
           <button
+            type="button"
             onClick={() => setActiveTab('ALL')}
-            className={`px-3 py-1.5 rounded-md font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-md font-medium transition-all ${
               activeTab === 'ALL'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
             }`}
           >
             All Analytics
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('LANES')}
-            className={`px-3 py-1.5 rounded-md font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-md font-medium transition-all ${
               activeTab === 'LANES'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
             }`}
           >
             Routing Lanes ({laneMetrics.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('THROUGHPUT')}
-            className={`px-3 py-1.5 rounded-md font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-md font-medium transition-all ${
               activeTab === 'THROUGHPUT'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
             }`}
           >
             Depot Throughput ({depotThroughput.length})
@@ -169,7 +174,7 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
       </div>
 
       {/* 2. Interactive Filter Controls Bar */}
-      <div className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-3 space-y-3">
+      <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3.5 space-y-3">
         <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
           <div className="flex items-center gap-1.5 text-slate-300">
             <Filter className="w-3.5 h-3.5 text-indigo-400" />
@@ -177,8 +182,9 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
           </div>
           {hasActiveFilters && (
             <button
+              type="button"
               onClick={resetFilters}
-              className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 transition"
+              className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 font-medium transition"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Reset Filters</span>
@@ -189,11 +195,11 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
           {/* Status Filter */}
           <div>
-            <label className="text-[10px] text-slate-400 block mb-1">Transfer Status</label>
+            <label className="text-[11px] font-medium text-slate-400 block mb-1">Transfer Status</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded px-2.5 py-1.5 outline-hidden focus:border-indigo-500"
+              className="h-9 w-full bg-slate-900 border border-slate-700/60 text-slate-200 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
             >
               <option value="ALL">All Statuses</option>
               <option value="RECEIVED">Completed (RECEIVED)</option>
@@ -205,11 +211,11 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
 
           {/* SKU Filter */}
           <div>
-            <label className="text-[10px] text-slate-400 block mb-1">SKU</label>
+            <label className="text-[11px] font-medium text-slate-400 block mb-1">SKU</label>
             <select
               value={skuFilter}
               onChange={(e) => setSkuFilter(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded px-2.5 py-1.5 outline-hidden focus:border-indigo-500"
+              className="h-9 w-full bg-slate-900 border border-slate-700/60 text-slate-200 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
             >
               <option value="ALL">All SKUs ({skus.length})</option>
               {skus.map(s => (
@@ -222,11 +228,11 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
 
           {/* Lane Filter */}
           <div>
-            <label className="text-[10px] text-slate-400 block mb-1">Routing Lane</label>
+            <label className="text-[11px] font-medium text-slate-400 block mb-1">Routing Lane</label>
             <select
               value={laneFilter}
               onChange={(e) => setLaneFilter(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded px-2.5 py-1.5 outline-hidden focus:border-indigo-500"
+              className="h-9 w-full bg-slate-900 border border-slate-700/60 text-slate-200 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
             >
               <option value="ALL">All Routing Lanes</option>
               {availableLanes.map(l => (
@@ -239,11 +245,11 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
 
           {/* Date Preset */}
           <div>
-            <label className="text-[10px] text-slate-400 block mb-1">Date Created</label>
+            <label className="text-[11px] font-medium text-slate-400 block mb-1">Date Created</label>
             <select
               value={datePreset}
               onChange={(e) => setDatePreset(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded px-2.5 py-1.5 outline-hidden focus:border-indigo-500"
+              className="h-9 w-full bg-slate-900 border border-slate-700/60 text-slate-200 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
             >
               <option value="ALL">All Time</option>
               <option value="TODAY">Today</option>
@@ -255,23 +261,23 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
 
         {/* Custom Date Pickers (if CUSTOM selected) */}
         {datePreset === 'CUSTOM' && (
-          <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-900 text-xs">
+          <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-800 text-xs">
             <div>
-              <label className="text-[10px] text-slate-400 block mb-1">Start Date</label>
+              <label className="text-[11px] font-medium text-slate-400 block mb-1">Start Date</label>
               <input
                 type="date"
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded px-2.5 py-1 outline-hidden focus:border-indigo-500"
+                className="h-9 w-full bg-slate-900 border border-slate-700/60 text-slate-200 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
             <div>
-              <label className="text-[10px] text-slate-400 block mb-1">End Date</label>
+              <label className="text-[11px] font-medium text-slate-400 block mb-1">End Date</label>
               <input
                 type="date"
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded px-2.5 py-1 outline-hidden focus:border-indigo-500"
+                className="h-9 w-full bg-slate-900 border border-slate-700/60 text-slate-200 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -279,126 +285,130 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
       </div>
 
       {/* 3. Top-Level Lane KPI Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         {/* Total Units Moved */}
-        <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 shadow-md flex flex-col justify-between">
+        <div className="p-4 sm:p-4.5 rounded-xl bg-slate-950/50 border border-slate-800/80 shadow-xs hover:border-slate-700/80 transition-colors flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400" title="Active and completed transfer volume (excludes cancelled orders)">
+            <span className="text-xs font-medium text-slate-400" title="Active and completed transfer volume (excludes cancelled orders)">
               Total Volume Moved
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60 tabular-nums">
               {overview.activeLanesCount} Active Lanes
             </span>
           </div>
-          <div className="my-1">
-            <span className="text-2xl font-extrabold text-white">
-              {overview.totalUnits.toLocaleString()} <span className="text-xs font-normal text-slate-400">units</span>
+          <div className="my-1.5 flex items-baseline gap-1.5">
+            <span className="text-2xl font-bold tracking-tight text-white tabular-nums">
+              {overview.totalUnits.toLocaleString()}
             </span>
+            <span className="text-xs font-normal text-slate-400">units</span>
           </div>
-          <div className="text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-            <span>
+          <div className="text-[11px] text-slate-400 mt-2 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
+            <span className="tabular-nums">
               {overview.totalTransfers} total order{overview.totalTransfers === 1 ? '' : 's'}
               {overview.cancelledTransfers > 0 && ` (${overview.cancelledTransfers} cancelled)`}
             </span>
-            <Layers className="w-3.5 h-3.5 text-indigo-400" />
+            <Layers className="w-3.5 h-3.5 text-indigo-400 opacity-80" />
           </div>
         </div>
 
         {/* Completed Deliveries */}
-        <div className="p-4 rounded-xl bg-slate-950/60 border border-emerald-500/30 shadow-md flex flex-col justify-between">
+        <div className="p-4 sm:p-4.5 rounded-xl bg-slate-950/50 border border-slate-800/80 shadow-xs hover:border-slate-700/80 transition-colors flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400">Completed Deliveries</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="text-xs font-medium text-slate-400">Completed Deliveries</span>
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
               Received
             </span>
           </div>
-          <div className="my-1">
-            <span className="text-2xl font-extrabold text-emerald-400">
-              {overview.completedUnits.toLocaleString()} <span className="text-xs font-normal text-slate-400">units</span>
+          <div className="my-1.5 flex items-baseline gap-1.5">
+            <span className="text-2xl font-bold tracking-tight text-emerald-400 tabular-nums">
+              {overview.completedUnits.toLocaleString()}
             </span>
+            <span className="text-xs font-normal text-slate-400">units</span>
           </div>
-          <div className="text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-            <span>{overview.completedTransfers} shipments stocked at dock</span>
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="text-[11px] text-slate-400 mt-2 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
+            <span className="tabular-nums">{overview.completedTransfers} shipments stocked at dock</span>
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 opacity-80" />
           </div>
         </div>
 
         {/* In-Transit Freight */}
-        <div className="p-4 rounded-xl bg-slate-950/60 border border-sky-500/30 shadow-md flex flex-col justify-between">
+        <div className="p-4 sm:p-4.5 rounded-xl bg-slate-950/50 border border-slate-800/80 shadow-xs hover:border-slate-700/80 transition-colors flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400">In-Transit Freight</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            <span className="text-xs font-medium text-slate-400">In-Transit Freight</span>
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/25">
               On Road
             </span>
           </div>
-          <div className="my-1">
-            <span className="text-2xl font-extrabold text-sky-400">
-              {overview.inTransitUnits.toLocaleString()} <span className="text-xs font-normal text-slate-400">units</span>
+          <div className="my-1.5 flex items-baseline gap-1.5">
+            <span className="text-2xl font-bold tracking-tight text-sky-400 tabular-nums">
+              {overview.inTransitUnits.toLocaleString()}
             </span>
+            <span className="text-xs font-normal text-slate-400">units</span>
           </div>
-          <div className="text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-            <span>{overview.inTransitTransfers} moving between regional hubs</span>
-            <Truck className="w-3.5 h-3.5 text-sky-400" />
+          <div className="text-[11px] text-slate-400 mt-2 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
+            <span className="tabular-nums">{overview.inTransitTransfers} moving between regional hubs</span>
+            <Truck className="w-3.5 h-3.5 text-sky-400 opacity-80" />
           </div>
         </div>
 
         {/* Staged & Cancelled */}
-        <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 shadow-md flex flex-col justify-between">
+        <div className="p-4 sm:p-4.5 rounded-xl bg-slate-950/50 border border-slate-800/80 shadow-xs hover:border-slate-700/80 transition-colors flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400">Staged & Cancelled</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              Pipeline State
+            <span className="text-xs font-medium text-slate-400">Pipeline State</span>
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
+              Staged / Aborted
             </span>
           </div>
-          <div className="my-1 flex items-baseline gap-2">
-            <span className="text-xl font-extrabold text-amber-400">
+          <div className="my-1.5 flex items-baseline gap-2">
+            <span className="text-xl font-bold text-amber-400 tabular-nums">
               {overview.pendingUnits} <span className="text-xs font-normal text-slate-400">pending</span>
             </span>
             <span className="text-slate-600">|</span>
-            <span className="text-sm font-semibold text-slate-400">
+            <span className="text-sm font-medium text-slate-400 tabular-nums">
               {overview.cancelledUnits} <span className="text-xs font-normal text-slate-500">cancelled</span>
             </span>
           </div>
-          <div className="text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-            <span>{overview.pendingTransfers} staged, {overview.cancelledTransfers} cancelled</span>
-            <Clock className="w-3.5 h-3.5 text-amber-400" />
+          <div className="text-[11px] text-slate-400 mt-2 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
+            <span className="tabular-nums">{overview.pendingTransfers} staged, {overview.cancelledTransfers} cancelled</span>
+            <Clock className="w-3.5 h-3.5 text-amber-400 opacity-80" />
           </div>
         </div>
       </div>
 
       {/* 4. Empty State Handling */}
       {transfers.length === 0 ? (
-        <div className="py-10 text-center border border-dashed border-slate-800 rounded-lg text-slate-400 space-y-1">
+        <div className="py-10 text-center border border-dashed border-slate-800 rounded-xl text-slate-400 space-y-1">
           <Info className="w-7 h-7 text-slate-500 mx-auto mb-2" />
           <p className="text-sm font-semibold text-slate-300">No transfer history recorded yet</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
             As lateral transfer orders are staged and dispatched, lane volume, throughput, and depot transfer balances will appear here.
           </p>
         </div>
       ) : filteredTransfers.length === 0 ? (
-        <div className="py-8 text-center border border-dashed border-slate-800 rounded-lg text-slate-400 space-y-2">
+        <div className="py-8 text-center border border-dashed border-slate-800 rounded-xl text-slate-400 space-y-2">
           <p className="text-xs font-medium text-slate-300">No transfer records match the active filter criteria.</p>
           <button
+            type="button"
             onClick={resetFilters}
-            className="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
+            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-xs transition"
           >
             Clear All Filters
           </button>
         </div>
       ) : (
         /* 5. Main Analytics Content Grid */
-        <div className={`grid grid-cols-1 ${activeTab === 'ALL' ? 'lg:grid-cols-2' : ''} gap-6`}>
+        <div className={`grid grid-cols-1 ${activeTab === 'ALL' ? 'lg:grid-cols-2' : ''} gap-5`}>
           {/* PANEL 1: Depot-to-Depot Routing Lanes */}
           {(activeTab === 'ALL' || activeTab === 'LANES') && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between pb-1">
                 <div className="flex items-center gap-2">
                   <ArrowRight className="w-4 h-4 text-indigo-400" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  <h3 className="text-xs font-semibold text-slate-200">
                     Routing Lanes & Fulfillment Status
                   </h3>
                 </div>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-400 tabular-nums">
                   {laneMetrics.length} active lane{laneMetrics.length === 1 ? '' : 's'}
                 </span>
               </div>
@@ -407,35 +417,35 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
                 {laneMetrics.map(lane => (
                   <div
                     key={lane.laneId}
-                    className="rounded-lg bg-slate-950/60 border border-slate-800/80 p-4 space-y-3 hover:border-slate-700/80 transition-colors"
+                    className="rounded-xl bg-slate-950/50 border border-slate-800/80 p-4 space-y-3 hover:border-slate-700/80 transition-colors"
                   >
                     {/* Lane Header */}
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="flex items-center gap-1.5 text-sm font-bold text-white">
+                        <div className="flex items-center gap-1.5 text-sm font-semibold text-white">
                           <span>{lane.fromDepotName}</span>
-                          <ArrowRight className="w-4 h-4 text-indigo-400 mx-1 shrink-0" />
+                          <ArrowRight className="w-3.5 h-3.5 text-indigo-400 mx-1 shrink-0" />
                           <span>{lane.toDepotName}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-0.5">
+                        <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono mt-0.5">
                           <span>{lane.fromDepotCity || lane.fromDepotId}</span>
                           <span>→</span>
                           <span>{lane.toDepotCity || lane.toDepotId}</span>
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <span className="text-sm font-extrabold text-white block">
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-bold text-white tabular-nums block">
                           {lane.totalUnits} <span className="text-xs font-normal text-slate-400">units</span>
                         </span>
-                        <span className="text-[10px] text-slate-400">
-                          {lane.totalTransfers} transfer order{lane.totalTransfers === 1 ? '' : 's'} ({lane.laneSharePercent}%)
+                        <span className="text-[10px] text-slate-400 tabular-nums">
+                          {lane.totalTransfers} order{lane.totalTransfers === 1 ? '' : 's'} ({lane.laneSharePercent}%)
                         </span>
                       </div>
                     </div>
 
                     {/* Proportional Volume Bar */}
-                    <div className="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden flex">
+                    <div className="w-full bg-slate-800/90 rounded-full h-1.5 overflow-hidden flex">
                       <div
                         className="h-1.5 bg-indigo-500 rounded-full transition-all duration-500"
                         style={{ width: `${Math.min(100, lane.laneSharePercent)}%` }}
@@ -444,27 +454,27 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
                     </div>
 
                     {/* Lifecycle Status Breakdown Chips */}
-                    <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                       {lane.completedUnits > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 font-medium tabular-nums">
                           <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                           {lane.completedUnits} Delivered ({lane.completedTransfers})
                         </span>
                       )}
                       {lane.inTransitUnits > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20 font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/25 font-medium tabular-nums">
                           <Truck className="w-3 h-3 text-sky-400" />
                           {lane.inTransitUnits} In-Transit ({lane.inTransitTransfers})
                         </span>
                       )}
                       {lane.pendingUnits > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/25 font-medium tabular-nums">
                           <Clock className="w-3 h-3 text-amber-400" />
                           {lane.pendingUnits} Pending ({lane.pendingTransfers})
                         </span>
                       )}
                       {lane.cancelledUnits > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700/60 font-medium tabular-nums">
                           <XCircle className="w-3 h-3 text-slate-500" />
                           {lane.cancelledUnits} Cancelled ({lane.cancelledTransfers})
                         </span>
@@ -474,18 +484,18 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
                     {/* SKU Breakdown on this Lane */}
                     {lane.skuBreakdown.length > 0 && (
                       <div className="border-t border-slate-900 pt-2 space-y-1">
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block">SKU Movement Breakdown:</span>
+                        <span className="text-[10px] text-slate-400 font-medium block">SKU Movement Breakdown:</span>
                         <div className="space-y-1">
                           {lane.skuBreakdown.map(sku => (
                             <div
                               key={sku.skuId}
-                              className="flex items-center justify-between text-[11px] py-1 px-2 rounded bg-slate-900/40 border border-slate-800/40"
+                              className="flex items-center justify-between text-[11px] py-1.5 px-2.5 rounded-lg bg-slate-900/40 border border-slate-800/40"
                             >
                               <div className="flex items-center gap-1.5">
-                                <span className="font-semibold text-slate-300">{sku.skuName}</span>
+                                <span className="font-medium text-slate-300">{sku.skuName}</span>
                                 <span className="font-mono text-[9px] text-slate-500">({sku.skuId})</span>
                               </div>
-                              <div className="text-right font-medium text-slate-200">
+                              <div className="text-right font-medium text-slate-200 tabular-nums">
                                 <span>{sku.totalUnits} {sku.unit}</span>
                                 {sku.inTransitUnits > 0 && (
                                   <span className="text-sky-400 text-[10px] ml-1.5">({sku.inTransitUnits} on road)</span>
@@ -504,11 +514,11 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
 
           {/* PANEL 2: Depot Throughput & Rebalancing Role */}
           {(activeTab === 'ALL' || activeTab === 'THROUGHPUT') && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between pb-1">
                 <div className="flex items-center gap-2">
                   <Truck className="w-4 h-4 text-emerald-400" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  <h3 className="text-xs font-semibold text-slate-200">
                     Depot Transfer Inflow & Outflow Throughput
                   </h3>
                 </div>
@@ -519,27 +529,27 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
 
               <div className="space-y-3">
                 {depotThroughput.map(depot => {
-                  let roleBadge = 'bg-slate-800 text-slate-300 border-slate-700';
+                  let roleBadge = 'bg-slate-800 text-slate-300 border-slate-700/60';
                   let roleLabel = 'Balanced Flow';
 
                   if (depot.role === 'NET_DONOR') {
-                    roleBadge = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+                    roleBadge = 'bg-amber-500/10 text-amber-300 border-amber-500/25';
                     roleLabel = `Net Donor (${Math.abs(depot.netFlow)} units outflow)`;
                   } else if (depot.role === 'NET_RECIPIENT') {
-                    roleBadge = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+                    roleBadge = 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25';
                     roleLabel = `Net Recipient (+${depot.netFlow} units inflow)`;
                   }
 
                   return (
                     <div
                       key={depot.depotId}
-                      className="rounded-lg bg-slate-950/60 border border-slate-800/80 p-4 space-y-3 hover:border-slate-700/80 transition-colors"
+                      className="rounded-xl bg-slate-950/50 border border-slate-800/80 p-4 space-y-3 hover:border-slate-700/80 transition-colors"
                     >
                       {/* Header */}
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-white">{depot.depotName}</h4>
+                            <h4 className="text-sm font-semibold text-white">{depot.depotName}</h4>
                             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
                               {depot.region}
                             </span>
@@ -550,7 +560,7 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
                           </div>
                         </div>
 
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleBadge}`}>
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${roleBadge}`}>
                           {roleLabel}
                         </span>
                       </div>
@@ -558,29 +568,29 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
                       {/* Stat Grid (Outbound vs Inbound) */}
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         {/* Outbound Box */}
-                        <div className="bg-slate-900/60 rounded p-2.5 border border-slate-800/60 space-y-1">
+                        <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800/70 space-y-1">
                           <div className="flex items-center justify-between text-[10px] text-slate-400">
                             <span>Outbound Sent (Donor)</span>
-                            <span className="font-mono text-slate-500">{depot.outboundTransfers} orders</span>
+                            <span className="font-mono text-slate-400 tabular-nums">{depot.outboundTransfers} orders</span>
                           </div>
-                          <div className="text-base font-extrabold text-amber-400">
+                          <div className="text-base font-bold text-amber-400 tabular-nums">
                             {depot.unitsSent} <span className="text-xs font-normal text-slate-400">units</span>
                           </div>
-                          <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-800/80">
+                          <div className="text-[10px] text-slate-400 pt-1.5 border-t border-slate-800/80 tabular-nums">
                             Delivered: {depot.sentCompletedUnits} • In-Transit: {depot.sentInTransitUnits} • Pending: {depot.sentPendingUnits}
                           </div>
                         </div>
 
                         {/* Inbound Box */}
-                        <div className="bg-slate-900/60 rounded p-2.5 border border-slate-800/60 space-y-1">
+                        <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800/70 space-y-1">
                           <div className="flex items-center justify-between text-[10px] text-slate-400">
                             <span>Inbound Received (Recipient)</span>
-                            <span className="font-mono text-slate-500">{depot.inboundTransfers} orders</span>
+                            <span className="font-mono text-slate-400 tabular-nums">{depot.inboundTransfers} orders</span>
                           </div>
-                          <div className="text-base font-extrabold text-emerald-400">
+                          <div className="text-base font-bold text-emerald-400 tabular-nums">
                             {depot.unitsReceived} <span className="text-xs font-normal text-slate-400">units</span>
                           </div>
-                          <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-800/80">
+                          <div className="text-[10px] text-slate-400 pt-1.5 border-t border-slate-800/80 tabular-nums">
                             Delivered: {depot.receivedCompletedUnits} • Incoming: {depot.receivedInTransitUnits} • Pending: {depot.receivedPendingUnits}
                           </div>
                         </div>
@@ -588,9 +598,9 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
 
                       {/* Net Physical Inventory Flow Indicator */}
                       <div className="pt-1">
-                        <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                        <div className="flex items-center justify-between text-[11px] text-slate-400">
                           <span>Net Rebalancing Flow</span>
-                          <span className={depot.netFlow > 0 ? 'text-emerald-400 font-bold' : depot.netFlow < 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}>
+                          <span className={`tabular-nums ${depot.netFlow > 0 ? 'text-emerald-400 font-semibold' : depot.netFlow < 0 ? 'text-amber-400 font-semibold' : 'text-slate-400'}`}>
                             {depot.netFlow > 0 ? `+${depot.netFlow} units received` : depot.netFlow < 0 ? `${depot.netFlow} units dispatched` : '0 units net flow'}
                           </span>
                         </div>

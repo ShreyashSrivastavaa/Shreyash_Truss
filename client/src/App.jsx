@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
-import SummaryCards from './components/SummaryCards';
 import InventoryAnalytics from './components/InventoryAnalytics';
 import TransferLaneAnalytics from './components/TransferLaneAnalytics';
 import OpportunityList from './components/OpportunityList';
@@ -108,8 +107,8 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
         <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
-        <h2 className="text-base font-semibold text-slate-200">Initializing Nexus Operating System...</h2>
-        <p className="text-xs text-slate-400 mt-1">Connecting to multi-depot inventory service on :5000</p>
+        <h2 className="text-base font-semibold text-slate-200">Initializing Nexus Supply Chain Operating System...</h2>
+        <p className="text-xs text-slate-400 mt-1">Connecting to multi-depot inventory balancing service on port 5000</p>
       </div>
     );
   }
@@ -124,17 +123,17 @@ export default function App() {
         isResetting={isResetting}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
         {/* Error notification banner if API failed */}
         {errorMessage && (
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
               <span>{errorMessage}</span>
             </div>
             <button
               onClick={() => loadDashboardData(true)}
-              className="px-2.5 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 font-semibold"
+              className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 font-semibold transition"
             >
               Retry Connection
             </button>
@@ -182,8 +181,8 @@ export default function App() {
         />
       </main>
 
-      <footer className="border-t border-slate-900 py-4 text-center text-[11px] text-slate-500">
-        Nexus Prototype • Product 18 • Multi-Depot Balancing (MVP 2A) • Truss Studios Matrix 2026
+      <footer className="border-t border-slate-900 py-6 text-center text-xs text-slate-500 font-medium">
+        Nexus Supply Chain OS • Multi-Depot Inventory Balancing Engine • Truss Matrix
       </footer>
     </div>
   );
