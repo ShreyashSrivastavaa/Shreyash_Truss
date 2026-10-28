@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import transferRoutes from './routes/transferRoutes.js';
+import vendorRoutes from './routes/vendorRoutes.js';
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.get('/api/health', (req, res) => {
 // Domain Routes
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/transfers', transferRoutes);
+app.use('/api/vendors', vendorRoutes);
 
 // Catch-all 404 handler for unknown routes
 app.use((req, res) => {

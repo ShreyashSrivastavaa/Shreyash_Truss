@@ -89,3 +89,55 @@ export async function resetInventory() {
   });
   return handleResponse(res);
 }
+
+export async function fetchVendors() {
+  const res = await fetch('/api/vendors');
+  return handleResponse(res);
+}
+
+export async function fetchVendorById(vendorId) {
+  const res = await fetch(`/api/vendors/${encodeURIComponent(vendorId)}`);
+  return handleResponse(res);
+}
+
+export async function fetchVendorDeliveries(params = {}) {
+  const query = new URLSearchParams();
+  if (params.vendorId) query.append('vendorId', params.vendorId);
+  if (params.status) query.append('status', params.status);
+  if (params.limit) query.append('limit', params.limit);
+  if (params.offset) query.append('offset', params.offset);
+
+  const qs = query.toString();
+  const url = qs ? `/api/vendors/deliveries?${qs}` : '/api/vendors/deliveries';
+  const res = await fetch(url);
+  return handleResponse(res);
+}
+
+export async function createVendorDelivery(payload) {
+  const res = await fetch('/api/vendors/deliveries', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+  return handleResponse(res);
+}
+
+export async function updateVendorDelivery(deliveryId, payload) {
+  const res = await fetch(`/api/vendors/deliveries/${encodeURIComponent(deliveryId)}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+  return handleResponse(res);
+}
+
+export async function resetVendors() {
+  const res = await fetch('/api/vendors/reset', {
+    method: 'POST'
+  });
+  return handleResponse(res);
+}

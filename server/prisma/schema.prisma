@@ -64,3 +64,35 @@ model Transfer {
   fromDepot Depot @relation("FromDepot", fields: [fromDepotId], references: [id])
   toDepot   Depot @relation("ToDepot", fields: [toDepotId], references: [id])
 }
+
+model Vendor {
+  id             String           @id
+  name           String
+  leadTimeDays   Int              @default(5)
+  targetOtifRate Float            @default(95.0)
+  isActive       Boolean          @default(true)
+  contactEmail   String?
+  category       String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  deliveries     VendorDelivery[]
+}
+
+model VendorDelivery {
+  id                   String    @id
+  vendorId             String
+  skuId                String?
+  depotId              String?
+  poNumber             String
+  expectedDeliveryDate DateTime
+  actualDeliveryDate   DateTime?
+  expectedQuantity     Int
+  receivedQuantity     Int       @default(0)
+  status               String    @default("SCHEDULED")
+  notes                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+}

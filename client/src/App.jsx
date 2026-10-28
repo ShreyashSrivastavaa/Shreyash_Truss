@@ -5,6 +5,8 @@ import TransferLaneAnalytics from './components/TransferLaneAnalytics';
 import OpportunityList from './components/OpportunityList';
 import InventoryGrid from './components/InventoryGrid';
 import TransferLog from './components/TransferLog';
+import VendorScorecards from './components/VendorScorecards';
+import VendorDeliveryMonitor from './components/VendorDeliveryMonitor';
 import {
   fetchHealth,
   fetchInventory,
@@ -14,16 +16,29 @@ import {
   dispatchTransfer,
   receiveTransfer,
   cancelTransfer,
-  resetInventory
+  resetInventory,
+  fetchVendors,
+  fetchVendorDeliveries,
+  resetVendors
 } from './api/client';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function App() {
+  const [activeModule, setActiveModule] = useState('INVENTORY'); // 'INVENTORY' | 'VENDORS'
+
+  // Inventory & Network state
   const [health, setHealth] = useState(null);
   const [inventoryData, setInventoryData] = useState(null);
   const [opportunities, setOpportunities] = useState([]);
   const [transfers, setTransfers] = useState([]);
 
+  // Vendor SLA state
+  const [vendors, setVendors] = useState([]);
+  const [vendorDeliveries, setVendorDeliveries] = useState([]);
+  const [vendorOverview, setVendorOverview] = useState({});
+  const [selectedVendorId, setSelectedVendorId] = useState('');
+
+  // UI state
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -36,17 +51,38 @@ export default function App() {
     setErrorMessage(null);
 
     try {
-      const [healthRes, invRes, oppsRes, trfRes] = await Promise.all([
+      const [healthRes, invRes, oppsRes, trfRes, vendorsRes, deliveriesRes] = await Promise.all([
         fetchHealth().catch(err => ({ status: 'error', error: err.message })),
-        fetchInventory(),
-        fetchOpportunities(),
-        fetchTransferHistory()
+        fetchInventory().catch(err => {
+          console.error('Inventory fetch failed:', err);
+          return null;
+        }),
+        fetchOpportunities().catch(err => {
+          console.error('Opportunities fetch failed:', err);
+          return { count: 0, opportunities: [] };
+        }),
+        fetchTransferHistory().catch(err => {
+          console.error('Transfer history fetch failed:', err);
+          return { count: 0, total: 0, transfers: [] };
+        }),
+        fetchVendors().catch(err => {
+          console.error('Vendors fetch failed:', err);
+          return { overview: {}, vendors: [] };
+        }),
+        fetchVendorDeliveries().catch(err => {
+          console.error('Deliveries fetch failed:', err);
+          return { count: 0, total: 0, deliveries: [] };
+        })
       ]);
 
       setHealth(healthRes);
-      setInventoryData(invRes);
-      setOpportunities(oppsRes.opportunities || []);
-      setTransfers(trfRes.transfers || []);
+      if (invRes) setInventoryData(invRes);
+      setOpportunities(oppsRes?.opportunities || []);
+      setTransfers(trfRes?.transfers || []);
+
+      setVendors(vendorsRes?.vendors || []);
+      setVendorOverview(vendorsRes?.overview || {});
+      setVendorDeliveries(deliveriesRes?.deliveries || []);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
       setErrorMessage(err.message || 'Failed to connect to the backend server. Make sure it is running on port 5000.');
@@ -65,7 +101,6 @@ export default function App() {
     setIsExecuting(true);
     try {
       await createTransfer(transferPayload);
-      // Immediately refresh live data from backend
       await loadDashboardData();
     } finally {
       setIsExecuting(false);
@@ -94,7 +129,11 @@ export default function App() {
   const handleReset = async () => {
     setIsResetting(true);
     try {
-      await resetInventory();
+      if (activeModule === 'VENDORS') {
+        await resetVendors();
+      } else {
+        await resetInventory();
+      }
       await loadDashboardData();
     } catch (err) {
       setErrorMessage(`Reset failed: ${err.message}`);
@@ -108,7 +147,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
         <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
         <h2 className="text-base font-semibold text-slate-200">Initializing Nexus Supply Chain Operating System...</h2>
-        <p className="text-xs text-slate-400 mt-1">Connecting to multi-depot inventory balancing service on port 5000</p>
+        <p className="text-xs text-slate-400 mt-1">Connecting to multi-depot inventory balancing & vendor SLA service on port 5000</p>
       </div>
     );
   }
@@ -121,6 +160,8 @@ export default function App() {
         onRefresh={() => loadDashboardData(true)}
         onReset={handleReset}
         isResetting={isResetting}
+        activeModule={activeModule}
+        onSelectModule={setActiveModule}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
@@ -140,49 +181,75 @@ export default function App() {
           </div>
         )}
 
-        {/* 1. Network Inventory Analytics & KPI Overview */}
-        <InventoryAnalytics
-          summary={inventoryData?.summary}
-          depots={inventoryData?.depots}
-          inventory={inventoryData?.inventory}
-          skus={inventoryData?.skus}
-          isLoading={isLoading}
-        />
+        {/* DOMAIN MODULE 1: INVENTORY & BALANCING */}
+        {activeModule === 'INVENTORY' && (
+          <>
+            {/* 1. Network Inventory Analytics & KPI Overview */}
+            <InventoryAnalytics
+              summary={inventoryData?.summary}
+              depots={inventoryData?.depots}
+              inventory={inventoryData?.inventory}
+              skus={inventoryData?.skus}
+              isLoading={isLoading}
+            />
 
-        {/* 2. Detected Transfer Opportunities (Action Section) */}
-        <OpportunityList
-          opportunities={opportunities}
-          onExecuteTransfer={handleStageTransfer}
-          isExecuting={isExecuting}
-        />
+            {/* 2. Detected Transfer Opportunities (Action Section) */}
+            <OpportunityList
+              opportunities={opportunities}
+              onExecuteTransfer={handleStageTransfer}
+              isExecuting={isExecuting}
+            />
 
-        {/* 3. Depot Inventory Grid */}
-        {inventoryData && (
-          <InventoryGrid
-            depots={inventoryData.depots}
-            inventory={inventoryData.inventory}
-          />
+            {/* 3. Depot Inventory Grid */}
+            {inventoryData && (
+              <InventoryGrid
+                depots={inventoryData.depots}
+                inventory={inventoryData.inventory}
+              />
+            )}
+
+            {/* 4. Transfer Lane Analytics & Freight Flow */}
+            <TransferLaneAnalytics
+              transfers={transfers}
+              depots={inventoryData?.depots}
+              skus={inventoryData?.skus}
+              isLoading={isLoading}
+            />
+
+            {/* 5. Active Shipments Pipeline & Audit Log */}
+            <TransferLog
+              transfers={transfers}
+              onDispatch={handleDispatchTransfer}
+              onReceive={handleReceiveTransfer}
+              onCancel={handleCancelTransfer}
+            />
+          </>
         )}
 
-        {/* 4. Transfer Lane Analytics & Freight Flow */}
-        <TransferLaneAnalytics
-          transfers={transfers}
-          depots={inventoryData?.depots}
-          skus={inventoryData?.skus}
-          isLoading={isLoading}
-        />
+        {/* DOMAIN MODULE 2: VENDOR SLA ENFORCEMENT */}
+        {activeModule === 'VENDORS' && (
+          <>
+            {/* 1. Vendor Scorecards & Performance Overview */}
+            <VendorScorecards
+              vendors={vendors}
+              overview={vendorOverview}
+              selectedVendorId={selectedVendorId}
+              onSelectVendor={setSelectedVendorId}
+            />
 
-        {/* 5. Active Shipments Pipeline & Audit Log */}
-        <TransferLog
-          transfers={transfers}
-          onDispatch={handleDispatchTransfer}
-          onReceive={handleReceiveTransfer}
-          onCancel={handleCancelTransfer}
-        />
+            {/* 2. Inbound Delivery Monitoring & Audit Table */}
+            <VendorDeliveryMonitor
+              deliveries={vendorDeliveries}
+              vendors={vendors}
+              selectedVendorId={selectedVendorId}
+              onSelectVendor={setSelectedVendorId}
+            />
+          </>
+        )}
       </main>
 
       <footer className="border-t border-slate-900 py-6 text-center text-xs text-slate-500 font-medium">
-        Nexus Supply Chain OS • Multi-Depot Inventory Balancing Engine • Truss Matrix
+        Nexus Supply Chain OS • Multi-Depot Balancing & Vendor SLA Enforcement • Truss Matrix
       </footer>
     </div>
   );

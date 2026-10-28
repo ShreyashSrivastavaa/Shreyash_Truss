@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
-import { RefreshCw, RotateCcw } from 'lucide-react';
+import { RefreshCw, RotateCcw, Warehouse, ShieldCheck } from 'lucide-react';
 
-export default function Header({ health, isRefreshing, onRefresh, onReset, isResetting }) {
+export default function Header({
+  health,
+  isRefreshing,
+  onRefresh,
+  onReset,
+  isResetting,
+  activeModule = 'INVENTORY',
+  onSelectModule
+}) {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const handleResetClick = () => {
@@ -15,7 +23,7 @@ export default function Header({ health, isRefreshing, onRefresh, onReset, isRes
 
   return (
     <header className="border-b border-slate-800/80 bg-slate-900/70 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 py-3.5">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         {/* Brand identity */}
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-sm shadow-xs border border-indigo-400/30 shrink-0">
@@ -27,17 +35,47 @@ export default function Header({ health, isRefreshing, onRefresh, onReset, isRes
                 Nexus
               </h1>
               <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
-                MVP 2A
+                Supply Chain OS
               </span>
             </div>
             <p className="text-xs text-slate-400 hidden sm:block mt-0.5">
-              Multi-Depot Inventory Balancing & Lateral Transfer Engine
+              Multi-Depot Inventory Balancing & Vendor SLA Enforcement
             </p>
           </div>
         </div>
 
+        {/* Center: Module Navigation Switcher */}
+        {onSelectModule && (
+          <div className="flex items-center p-1 rounded-xl bg-slate-950/70 border border-slate-800/90 self-start md:self-center">
+            <button
+              type="button"
+              onClick={() => onSelectModule('INVENTORY')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition ${
+                activeModule === 'INVENTORY'
+                  ? 'bg-indigo-600 text-white shadow-xs font-semibold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Warehouse className="w-3.5 h-3.5" />
+              <span>Inventory Balancing</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectModule('VENDORS')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition ${
+                activeModule === 'VENDORS'
+                  ? 'bg-indigo-600 text-white shadow-xs font-semibold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Vendor SLA Monitoring</span>
+            </button>
+          </div>
+        )}
+
         {/* Header Action Controls */}
-        <div className="flex items-center gap-2.5 self-end sm:self-auto">
+        <div className="flex items-center gap-2.5 self-end md:self-auto">
           {/* Health status badge */}
           <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-850/80 border border-slate-700/50 text-xs">
             <span className="flex h-2 w-2 relative">
@@ -65,7 +103,7 @@ export default function Header({ health, isRefreshing, onRefresh, onReset, isRes
             type="button"
             onClick={handleResetClick}
             disabled={isResetting}
-            title="Reset to imbalanced synthetic baseline"
+            title="Reset to synthetic baseline"
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800/50 hover:bg-rose-500/10 text-slate-400 hover:text-rose-300 border border-slate-700/50 hover:border-rose-500/30 transition disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
           >
             <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin text-rose-400' : 'text-slate-400'}`} />
@@ -81,7 +119,9 @@ export default function Header({ health, isRefreshing, onRefresh, onReset, isRes
             <div className="space-y-1.5">
               <h3 className="text-sm font-semibold text-white">Reset to Synthetic Baseline?</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                This restores the initial imbalanced inventory levels across all 3 regional depots and clears active and completed transfers.
+                {activeModule === 'VENDORS'
+                  ? 'This restores the initial synthetic vendor profiles, purchase orders, and delivery histories.'
+                  : 'This restores the initial imbalanced inventory levels across all 3 regional depots and clears active and completed transfers.'}
               </p>
             </div>
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-800/80">
