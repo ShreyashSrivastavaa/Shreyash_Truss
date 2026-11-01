@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { initialDepots, initialSkus, initialInventory } from '../src/data/mockData.js';
+import { initialVendors, initialVendorDeliveries } from '../src/data/mockVendorData.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -53,6 +54,44 @@ export async function seed(client = prisma) {
         inTransit: inv.inTransit ?? 0,
         safetyStock: inv.safetyStock,
         targetStock: inv.targetStock
+      }
+    });
+  }
+
+  // 5. Seed Vendors
+  console.log(`Seeding ${initialVendors.length} registered vendors...`);
+  await client.vendorDelivery.deleteMany();
+  await client.vendor.deleteMany();
+  for (const vendor of initialVendors) {
+    await client.vendor.create({
+      data: {
+        id: vendor.id,
+        name: vendor.name,
+        category: vendor.category,
+        contactEmail: vendor.contactEmail,
+        leadTimeDays: vendor.leadTimeDays,
+        targetOtifRate: vendor.targetOtifRate,
+        isActive: vendor.isActive
+      }
+    });
+  }
+
+  // 6. Seed Vendor Deliveries
+  console.log(`Seeding ${initialVendorDeliveries.length} vendor deliveries...`);
+  for (const del of initialVendorDeliveries) {
+    await client.vendorDelivery.create({
+      data: {
+        id: del.id,
+        vendorId: del.vendorId,
+        skuId: del.skuId,
+        depotId: del.depotId,
+        poNumber: del.poNumber,
+        expectedDeliveryDate: new Date(del.expectedDeliveryDate),
+        actualDeliveryDate: del.actualDeliveryDate ? new Date(del.actualDeliveryDate) : null,
+        expectedQuantity: del.expectedQuantity,
+        receivedQuantity: del.receivedQuantity ?? 0,
+        status: del.status,
+        notes: del.notes
       }
     });
   }
