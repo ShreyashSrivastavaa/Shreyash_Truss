@@ -133,7 +133,7 @@ router.patch('/deliveries/:id', async (req, res) => {
 
 // POST /api/vendors/reset - Reset vendor & delivery state back to synthetic baseline
 router.post('/reset', async (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_RESET !== 'true') {
     return res.status(403).json({
       error: 'Forbidden: Demo state reset is disabled in production environment'
     });
