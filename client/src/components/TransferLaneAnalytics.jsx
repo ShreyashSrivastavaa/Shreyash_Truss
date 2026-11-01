@@ -11,6 +11,7 @@ import {
   Calendar,
   Layers,
   Info,
+  MapPin,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
