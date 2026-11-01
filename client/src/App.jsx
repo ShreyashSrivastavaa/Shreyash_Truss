@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
-import InventoryAnalytics from './components/InventoryAnalytics';
-import TransferLaneAnalytics from './components/TransferLaneAnalytics';
-import OpportunityList from './components/OpportunityList';
+import SummaryCards from './components/SummaryCards';
 import InventoryGrid from './components/InventoryGrid';
+import OpportunityList from './components/OpportunityList';
 import TransferLog from './components/TransferLog';
+import TransferLaneAnalytics from './components/TransferLaneAnalytics';
 import VendorScorecards from './components/VendorScorecards';
 import VendorDeliveryMonitor from './components/VendorDeliveryMonitor';
 import {
@@ -21,10 +21,11 @@ import {
   fetchVendorDeliveries,
   resetVendors
 } from './api/client';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Compass } from 'lucide-react';
 
 export default function App() {
   const [activeModule, setActiveModule] = useState('INVENTORY'); // 'INVENTORY' | 'VENDORS'
+  const [isDetailed, setIsDetailed] = useState(false); // Simple vs Detailed view
 
   // Inventory & Network state
   const [health, setHealth] = useState(null);
@@ -85,7 +86,7 @@ export default function App() {
       setVendorDeliveries(deliveriesRes?.deliveries || []);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
-      setErrorMessage(err.message || 'Failed to connect to the backend server. Make sure it is running on port 5000.');
+      setErrorMessage(err.message || 'Failed to connect to the backend server. Make sure it is running.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -147,13 +148,14 @@ export default function App() {
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
         <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
         <h2 className="text-base font-semibold text-slate-200">Initializing Nexus Supply Chain Operating System...</h2>
-        <p className="text-xs text-slate-400 mt-1">Connecting to multi-depot inventory balancing & vendor SLA service on port 5000</p>
+        <p className="text-xs text-slate-400 mt-1">Connecting to multi-depot inventory balancing & vendor SLA service</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+      {/* Top Navigation Bar with Simple/Detailed mode and Demo Guide */}
       <Header
         health={health}
         isRefreshing={isRefreshing}
@@ -162,9 +164,11 @@ export default function App() {
         isResetting={isResetting}
         activeModule={activeModule}
         onSelectModule={setActiveModule}
+        isDetailed={isDetailed}
+        onToggleDetailed={() => setIsDetailed(!isDetailed)}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Error notification banner if API failed */}
         {errorMessage && (
           <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between shadow-sm">
@@ -181,52 +185,63 @@ export default function App() {
           </div>
         )}
 
-        {/* DOMAIN MODULE 1: INVENTORY & BALANCING */}
+        {/* ========================================================================= */}
+        {/* DOMAIN MODULE 1: INVENTORY & BALANCING (Strict Required Order)            */}
+        {/* 1a. KPI Strip (4 cards)                                                  */}
+        {/* 1b. Depot Health (Unified 3x2 grid)                                      */}
+        {/* 1c. Recommended Transfers (Visual Hero)                                  */}
+        {/* 1d. Shipments (Active & History in one tabbed view)                      */}
+        {/* 1e. Advanced Analytics (Collapsed accordion at bottom)                    */}
+        {/* ========================================================================= */}
         {activeModule === 'INVENTORY' && (
           <>
-            {/* 1. Network Inventory Analytics & KPI Overview */}
-            <InventoryAnalytics
+            {/* 1a. 4-Card KPI Strip */}
+            <SummaryCards
               summary={inventoryData?.summary}
-              depots={inventoryData?.depots}
               inventory={inventoryData?.inventory}
-              skus={inventoryData?.skus}
-              isLoading={isLoading}
+              isDetailed={isDetailed}
             />
 
-            {/* 2. Detected Transfer Opportunities (Action Section) */}
-            <OpportunityList
-              opportunities={opportunities}
-              onExecuteTransfer={handleStageTransfer}
-              isExecuting={isExecuting}
-            />
-
-            {/* 3. Depot Inventory Grid */}
+            {/* 1b. Depot Health Matrix (Unified 3 Depots x 2 SKUs) */}
             {inventoryData && (
               <InventoryGrid
                 depots={inventoryData.depots}
                 inventory={inventoryData.inventory}
+                isDetailed={isDetailed}
               />
             )}
 
-            {/* 4. Transfer Lane Analytics & Freight Flow */}
-            <TransferLaneAnalytics
-              transfers={transfers}
-              depots={inventoryData?.depots}
-              skus={inventoryData?.skus}
-              isLoading={isLoading}
+            {/* 1c. Recommended Transfers (Visual Hero Action Section) */}
+            <OpportunityList
+              opportunities={opportunities}
+              onExecuteTransfer={handleStageTransfer}
+              isExecuting={isExecuting}
+              isDetailed={isDetailed}
             />
 
-            {/* 5. Active Shipments Pipeline & Audit Log */}
+            {/* 1d. Shipments Section (Merged Active Pipeline & Audit History) */}
             <TransferLog
               transfers={transfers}
               onDispatch={handleDispatchTransfer}
               onReceive={handleReceiveTransfer}
               onCancel={handleCancelTransfer}
+              isDetailed={isDetailed}
+            />
+
+            {/* 1e. Advanced Analytics Accordion (Collapsed by default) */}
+            <TransferLaneAnalytics
+              transfers={transfers}
+              depots={inventoryData?.depots}
+              skus={inventoryData?.skus}
+              isLoading={isLoading}
+              isDetailed={isDetailed}
             />
           </>
         )}
 
-        {/* DOMAIN MODULE 2: VENDOR SLA ENFORCEMENT */}
+        {/* ========================================================================= */}
+        {/* DOMAIN MODULE 2: VENDOR SLA ENFORCEMENT                                  */}
+        {/* ========================================================================= */}
         {activeModule === 'VENDORS' && (
           <>
             {/* 1. Vendor Scorecards & Performance Overview */}
@@ -235,6 +250,7 @@ export default function App() {
               overview={vendorOverview}
               selectedVendorId={selectedVendorId}
               onSelectVendor={setSelectedVendorId}
+              isDetailed={isDetailed}
             />
 
             {/* 2. Inbound Delivery Monitoring & Audit Table */}
@@ -243,13 +259,42 @@ export default function App() {
               vendors={vendors}
               selectedVendorId={selectedVendorId}
               onSelectVendor={setSelectedVendorId}
+              isDetailed={isDetailed}
             />
           </>
         )}
+
+        {/* ========================================================================= */}
+        {/* ROADMAP STRIP (Honest labeling: Upcoming Truss Product 18 Capabilities)  */}
+        {/* ========================================================================= */}
+        <section className="pt-4 border-t border-slate-900/80" aria-label="Product Roadmap">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-slate-950/50 border border-slate-900 text-slate-500">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
+                Roadmap
+              </span>
+              <span className="text-xs text-slate-400 font-medium">Coming Next in Nexus Product 18:</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-400">
+              <span className="px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800">
+                Predictive Demand Forecasting
+              </span>
+              <span className="px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800">
+                Cold-Chain Live Telemetry
+              </span>
+              <span className="px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800">
+                Dynamic Fleet Routing
+              </span>
+              <span className="px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800">
+                Autonomous Procurement
+              </span>
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="border-t border-slate-900 py-6 text-center text-xs text-slate-500 font-medium">
-        Nexus Supply Chain OS • Multi-Depot Balancing & Vendor SLA Enforcement • Truss Matrix
+      <footer className="border-t border-slate-900 py-5 text-center text-xs text-slate-500 font-medium">
+        Nexus • Self-Evolving Enterprise Supply Chain Management & Predictive Logistics • Truss Studios Product 18
       </footer>
     </div>
   );

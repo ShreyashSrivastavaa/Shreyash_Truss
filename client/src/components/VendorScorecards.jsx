@@ -26,41 +26,41 @@ export default function VendorScorecards({
 
   return (
     <div className="space-y-6">
-      {/* 1. Network Vendor SLA Summary KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4">
+      {/* 1. Network Vendor SLA Summary KPIs (4 Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         {/* Monitored Vendors */}
-        <div className="p-4 rounded-xl bg-slate-900/75 border border-slate-800/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
+        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-slate-400">Monitored Vendors</span>
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-slate-800 text-slate-300 border-slate-700/60">
               Registry
             </span>
           </div>
-          <div className="my-1.5 flex items-baseline gap-1.5">
+          <div className="my-1 flex items-baseline gap-1.5">
             <span className="text-2xl font-bold tracking-tight text-white tabular-nums">
               {vendors.length}
             </span>
             <span className="text-xs text-slate-400">({activeVendors} active)</span>
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2.5 border-t border-slate-800/80">
+          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2 border-t border-slate-800/80">
             <span className="text-[11px] text-slate-400">Supplier portfolio</span>
             <Building2 className="w-3.5 h-3.5 text-indigo-400 opacity-80" />
           </div>
         </div>
 
         {/* Network OTIF Rate */}
-        <div className="p-4 rounded-xl bg-slate-900/75 border border-slate-800/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
+        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-slate-400">Network OTIF Rate</span>
             <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
               networkOtif >= 90
                 ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
                 : 'bg-amber-500/10 text-amber-300 border-amber-500/25'
             }`}>
-              Primary KPI
+              Target &gt;90%
             </span>
           </div>
-          <div className="my-1.5 flex items-baseline gap-1.5">
+          <div className="my-1 flex items-baseline gap-1.5">
             <span className={`text-2xl font-bold tracking-tight tabular-nums ${
               networkOtif >= 90 ? 'text-emerald-400' : 'text-amber-400'
             }`}>
@@ -68,59 +68,39 @@ export default function VendorScorecards({
             </span>
             <span className="text-xs text-slate-400">overall</span>
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2.5 border-t border-slate-800/80">
-            <span className="text-[11px] text-slate-400">On Time & In Full</span>
+          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2 border-t border-slate-800/80">
+            <span className="text-[11px] text-slate-400">On-Time &amp; In-Full</span>
             <Percent className="w-3.5 h-3.5 text-emerald-400 opacity-80" />
           </div>
         </div>
 
-        {/* On-Time Delivery Rate */}
-        <div className="p-4 rounded-xl bg-slate-900/75 border border-slate-800/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-400">On-Time Delivery</span>
+        {/* Schedule & Fulfillment Compliance */}
+        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-slate-400">Fulfillment Match</span>
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-slate-800 text-slate-300 border-slate-700/60">
-              Schedule
+              Schedule &amp; Qty
             </span>
           </div>
-          <div className="my-1.5 flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold tracking-tight text-white tabular-nums">
-              {networkOnTime}%
-            </span>
-            <span className="text-xs text-slate-400">compliance</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2.5 border-t border-slate-800/80">
-            <span className="text-[11px] text-slate-400">Historical delivery date</span>
-            <Clock className="w-3.5 h-3.5 text-sky-400 opacity-80" />
-          </div>
-        </div>
-
-        {/* In-Full Delivery Rate */}
-        <div className="p-4 rounded-xl bg-slate-900/75 border border-slate-800/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-400">In-Full Delivery</span>
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-slate-800 text-slate-300 border-slate-700/60">
-              Fulfillment
-            </span>
-          </div>
-          <div className="my-1.5 flex items-baseline gap-1.5">
+          <div className="my-1 flex items-baseline gap-1.5">
             <span className="text-2xl font-bold tracking-tight text-white tabular-nums">
               {networkInFull}%
             </span>
-            <span className="text-xs text-slate-400">quantity match</span>
+            <span className="text-xs text-slate-400">in-full ({networkOnTime}% on-time)</span>
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2.5 border-t border-slate-800/80">
+          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2 border-t border-slate-800/80">
             <span className="text-[11px] text-slate-400">Received vs expected</span>
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 opacity-80" />
           </div>
         </div>
 
-        {/* Overdue Shipments Flag */}
+        {/* Overdue Shipments Alert */}
         <div className={`p-4 rounded-xl border shadow-xs flex flex-col justify-between ${
           overdueCount > 0
             ? 'bg-rose-950/20 border-rose-500/30'
-            : 'bg-slate-900/75 border-slate-800/80'
+            : 'bg-slate-900/80 border-slate-800'
         }`}>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-slate-400">Active Overdue</span>
             <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
               overdueCount > 0
@@ -130,7 +110,7 @@ export default function VendorScorecards({
               {overdueCount > 0 ? 'Urgent Alert' : 'Clean Pipeline'}
             </span>
           </div>
-          <div className="my-1.5 flex items-baseline gap-1.5">
+          <div className="my-1 flex items-baseline gap-1.5">
             <span className={`text-2xl font-bold tracking-tight tabular-nums ${
               overdueCount > 0 ? 'text-rose-400' : 'text-white'
             }`}>
@@ -138,8 +118,8 @@ export default function VendorScorecards({
             </span>
             <span className="text-xs text-slate-400">{overdueCount === 1 ? 'shipment' : 'shipments'}</span>
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2.5 border-t border-slate-800/80">
-            <span className="text-[11px] text-slate-400">Expected date passed</span>
+          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2 border-t border-slate-800/80">
+            <span className="text-[11px] text-slate-400">Late inbound deliveries</span>
             <AlertTriangle className={`w-3.5 h-3.5 opacity-80 ${overdueCount > 0 ? 'text-rose-400' : 'text-slate-500'}`} />
           </div>
         </div>

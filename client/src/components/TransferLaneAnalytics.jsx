@@ -11,7 +11,8 @@ import {
   Calendar,
   Layers,
   Info,
-  MapPin
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import {
   filterTransfers,
@@ -20,7 +21,8 @@ import {
   calculateDepotThroughput
 } from '../utils/transferLaneAnalytics.js';
 
-export default function TransferLaneAnalytics({ transfers = [], depots = [], skus = [], isLoading }) {
+export default function TransferLaneAnalytics({ transfers = [], depots = [], skus = [], isLoading, isDetailed = false }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' | 'LANES' | 'THROUGHPUT'
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [skuFilter, setSkuFilter] = useState('ALL');
@@ -112,20 +114,22 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
     );
   }
 
+  const showContent = isDetailed || isOpen;
+
   return (
-    <section className="bg-slate-900/75 border border-slate-800/80 rounded-xl p-4 sm:p-5 shadow-xs backdrop-blur-xs space-y-5" aria-label="Transfer Lane Analytics Section">
-      {/* 1. Header & View Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-800/80 pb-4">
+    <section className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-xs transition" aria-label="Advanced Transfer Lane Analytics">
+      {/* 1. Header with Accordion Toggle */}
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${showContent ? 'border-b border-slate-800/80 pb-4 mb-5' : ''}`}>
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 shrink-0">
             <ArrowLeftRight className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-semibold tracking-normal text-slate-100">
-                Transfer Lane Analytics & Freight Flow
+              <h2 className="text-base font-semibold tracking-tight text-white">
+                Advanced Analytics: Lane Routing & Freight Flow
               </h2>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700/60">
                 {transfers.length} Records
               </span>
             </div>
@@ -135,8 +139,21 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
           </div>
         </div>
 
-        {/* View Switcher Tabs */}
-        <div className="flex items-center gap-1 bg-slate-950/90 p-1 rounded-lg border border-slate-800 text-xs self-start sm:self-auto">
+        {/* Toggle Button */}
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="self-start sm:self-center text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700/60 flex items-center gap-1.5 font-medium transition"
+        >
+          <span>{showContent ? 'Collapse Analytics' : 'Expand Advanced Analytics'}</span>
+          {showContent ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
+      </div>
+
+      {showContent && (
+        <div className="space-y-5">
+          {/* View Switcher Tabs */}
+          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs self-start">
           <button
             type="button"
             onClick={() => setActiveTab('ALL')}
@@ -171,9 +188,8 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
             Depot Throughput ({depotThroughput.length})
           </button>
         </div>
-      </div>
 
-      {/* 2. Interactive Filter Controls Bar */}
+        {/* 2. Interactive Filter Controls Bar */}
       <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3.5 space-y-3">
         <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
           <div className="flex items-center gap-1.5 text-slate-300">
@@ -611,6 +627,8 @@ export default function TransferLaneAnalytics({ transfers = [], depots = [], sku
               </div>
             </div>
           )}
+        </div>
+      )}
         </div>
       )}
     </section>
