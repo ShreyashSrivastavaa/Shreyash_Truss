@@ -1,3 +1,5 @@
+import { formatDate } from '../lib/format/formatDate.js';
+
 /**
  * Client-side utility functions for Vendor SLA metrics, status classification, and formatting.
  */
@@ -178,19 +180,8 @@ export function calculateVendorSlaMetrics(vendor, deliveries = [], referenceTime
 }
 
 /**
- * Formats date into human-readable string.
+ * Formats date into human-readable Indian format: DD MMM YYYY.
  */
 export function formatDisplayDate(dateInput) {
-  if (!dateInput) return '—';
-  try {
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return dateInput;
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  } catch {
-    return dateInput;
-  }
+  return formatDate(dateInput);
 }

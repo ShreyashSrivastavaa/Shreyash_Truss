@@ -2,32 +2,263 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-page: #FFFBFC;
+  --color-section: #FFF5F7;
+  --color-surface: #FFFFFF;
+  --color-border: #F3E3E8;
+  --color-heading: #1F1720;
+  --color-body: #4B4350;
+  --color-muted: #8A8190;
+
+  --color-rose: #E11D48;
+  --color-rose-hover: #BE123C;
+  --color-rose-soft: #FFE4EA;
+  --color-rose-subtle: #FFF1F4;
+
+  --color-success-text: #1F8A5B;
+  --color-success-bg: #E8F6EF;
+
+  --color-warning-text: #B7791F;
+  --color-warning-bg: #FDF4E3;
+
+  --color-danger-text: #B42318;
+  --color-danger-bg: #FDECEA;
+
+  --color-info-text: #5B5BD6;
+  --color-info-bg: #EEEEFE;
+}
+
+html.dark {
+  --color-page: #0F0D15;
+  --color-section: #16131F;
+  --color-surface: #1A1624;
+  --color-border: #2A2436;
+  --color-heading: #F7F4F9;
+  --color-body: #C8C2CE;
+  --color-muted: #8D8396;
+
+  --color-rose: #E11D48;
+  --color-rose-hover: #BE123C;
+  --color-rose-soft: #381523;
+  --color-rose-subtle: #24141E;
+
+  --color-success-text: #34D399;
+  --color-success-bg: #11281E;
+
+  --color-warning-text: #FBBF24;
+  --color-warning-bg: #291F0C;
+
+  --color-danger-text: #F87171;
+  --color-danger-bg: #311417;
+
+  --color-info-text: #818CF8;
+  --color-info-bg: #161633;
+}
+
 @layer base {
   body {
     margin: 0;
-    background-color: #060a12;
-    color: #f1f5f9;
+    background-color: #FFFBFC;
+    color: #4B4350;
+    font-family: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.5;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* Custom subtle dark scrollbars for enterprise UI */
+  html.dark body {
+    background-color: #0F0D15;
+    color: #C8C2CE;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: #1F1720;
+    font-weight: 600;
+  }
+
+  html.dark h1,
+  html.dark h2,
+  html.dark h3,
+  html.dark h4,
+  html.dark h5,
+  html.dark h6 {
+    color: #F7F4F9;
+  }
+
+  /* Custom airy scrollbars */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #060a12;
+    background: #FFF5F7;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #1e293b;
+    background: #F3E3E8;
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #334155;
+    background: #E5D0D6;
   }
+
+  html.dark ::-webkit-scrollbar-track {
+    background: #16131F;
+  }
+
+  html.dark ::-webkit-scrollbar-thumb {
+    background: #2A2436;
+  }
+
+  html.dark ::-webkit-scrollbar-thumb:hover {
+    background: #3B334C;
+  }
+}
+
+/* ========================================================================== */
+/* DARK MODE THEME MAPPINGS                                                  */
+/* Maps standard token classes to dark obsidian-rose equivalents             */
+/* ========================================================================== */
+html.dark .bg-white {
+  background-color: #1A1624 !important;
+}
+
+html.dark .bg-\[\#FFFBFC\] {
+  background-color: #0F0D15 !important;
+}
+
+html.dark .bg-\[\#FFF5F7\] {
+  background-color: #16131F !important;
+}
+
+html.dark .bg-\[\#FFF1F4\] {
+  background-color: #24141E !important;
+}
+
+html.dark .bg-\[\#FFE4EA\] {
+  background-color: #381523 !important;
+}
+
+html.dark .border-\[\#F3E3E8\] {
+  border-color: #2A2436 !important;
+}
+
+html.dark .text-\[\#1F1720\] {
+  color: #F7F4F9 !important;
+}
+
+html.dark .text-\[\#4B4350\] {
+  color: #C8C2CE !important;
+}
+
+html.dark .text-\[\#8A8190\] {
+  color: #8D8396 !important;
+}
+
+/* Soft hover tints in dark mode */
+html.dark .hover\:bg-\[\#FFF5F7\]:hover {
+  background-color: #201C2C !important;
+}
+
+html.dark .hover\:bg-\[\#FFF1F4\]:hover {
+  background-color: #2A1724 !important;
+}
+
+html.dark .hover\:bg-\[\#FFE4EA\]:hover {
+  background-color: #421A2A !important;
+}
+
+html.dark .hover\:bg-\[\#FDECEA\]:hover {
+  background-color: #3D191D !important;
+}
+
+html.dark .hover\:text-\[\#1F1720\]:hover {
+  color: #FFFFFF !important;
+}
+
+/* Primary Rose highlights in dark mode */
+html.dark .text-\[\#BE123C\] {
+  color: #FB7185 !important;
+}
+
+/* Semantics in dark mode */
+html.dark .bg-\[\#E8F6EF\] {
+  background-color: #11281E !important;
+}
+
+html.dark .text-\[\#1F8A5B\] {
+  color: #34D399 !important;
+}
+
+html.dark .bg-\[\#FDF4E3\] {
+  background-color: #291F0C !important;
+}
+
+html.dark .text-\[\#B7791F\] {
+  color: #FBBF24 !important;
+}
+
+html.dark .bg-\[\#FDECEA\] {
+  background-color: #311417 !important;
+}
+
+html.dark .text-\[\#B42318\] {
+  color: #F87171 !important;
+}
+
+html.dark .bg-\[\#EEEEFE\] {
+  background-color: #161633 !important;
+}
+
+html.dark .text-\[\#5B5BD6\] {
+  color: #818CF8 !important;
+}
+
+/* Dark mode inputs, selects, and textareas */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  color-scheme: dark;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #6B6275 !important;
+}
+
+/* Dark mode shadows */
+html.dark .shadow-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+
+html.dark .shadow-subtle {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Dark mode SVG Map */
+html.dark svg path[stroke="#F3E3E8"] {
+  stroke: #2A2436 !important;
+}
+
+html.dark svg path[fill="rgba(225, 29, 72, 0.02)"] {
+  fill: rgba(225, 29, 72, 0.04) !important;
+}
+
+html.dark svg text[fill="#1F1720"] {
+  fill: #F7F4F9 !important;
+}
+
+html.dark svg text[fill="#8A8190"] {
+  fill: #8D8396 !important;
+}
+
+html.dark svg circle[fill="#FFFFFF"] {
+  fill: #1A1624 !important;
 }
 
 @layer utilities {

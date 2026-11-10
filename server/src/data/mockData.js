@@ -1,23 +1,26 @@
-// Synthetic data store for Multi-Depot Inventory Balancing (MVP 2A)
+// Synthetic data store for Multi-Depot Inventory Balancing (MVP 2A) - India Localization
 
 export const initialDepots = [
   {
     id: 'depot-north',
     name: 'North Logistics Hub',
-    city: 'Chicago, IL',
-    region: 'Midwest'
+    city: 'Gurugram, Haryana (Delhi NCR)',
+    region: 'North',
+    gstin: '06AABCT9988C1Z4'
   },
   {
     id: 'depot-south',
     name: 'South Distribution Center',
-    city: 'Dallas, TX',
-    region: 'South'
+    city: 'Chennai, Tamil Nadu',
+    region: 'South',
+    gstin: '33AABCS7766D1Z2'
   },
   {
     id: 'depot-east',
     name: 'East Gateway Depot',
-    city: 'Philadelphia, PA',
-    region: 'East'
+    city: 'Kolkata, West Bengal',
+    region: 'East',
+    gstin: '19AABCE5544E1Z9'
   }
 ];
 
@@ -26,13 +29,13 @@ export const initialSkus = [
     id: 'SKU-MED-01',
     name: 'Emergency Cold-Chain Sensor Pack',
     unit: 'boxes',
-    unitCost: 145.00
+    unitCost: 8900.00
   },
   {
     id: 'SKU-IND-02',
     name: 'Industrial Temperature Relay',
     unit: 'units',
-    unitCost: 82.50
+    unitCost: 2450.00
   }
 ];
 

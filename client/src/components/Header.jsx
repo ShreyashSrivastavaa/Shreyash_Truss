@@ -1,15 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   RefreshCw,
   RotateCcw,
-  Warehouse,
-  ShieldCheck,
   Compass,
   SlidersHorizontal,
-  X,
-  ArrowRight,
-  CheckCircle2
+  LogOut,
+  ChevronDown,
+  User,
+  Check,
+  Sun,
+  Moon
 } from 'lucide-react';
+import { useAuth } from '../lib/auth/AuthContext';
+import { useTheme } from '../lib/theme/ThemeContext';
+import { getPermissionsForUser } from '../lib/permissions';
+import NotificationDropdown from './NotificationDropdown';
+import RoleDemoGuideModal from './RoleDemoGuideModal';
 
 export default function Header({
   health,
@@ -20,262 +26,367 @@ export default function Header({
   activeModule = 'INVENTORY',
   onSelectModule,
   isDetailed = false,
-  onToggleDetailed
+  onToggleDetailed,
+  notifications = [],
+  onMarkAllRead
 }) {
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [showTour, setShowTour] = useState(false);
-  const [tourStep, setTourStep] = useState(1);
+  const { currentUser, switchRole, logout, demoUsers } = useAuth();
+  const { theme, isDark, toggleTheme } = useTheme();
+  const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [showRoleGuide, setShowRoleGuide] = useState(false);
+  const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
+  const avatarMenuRef = useRef(null);
 
-  const handleResetClick = () => {
-    setShowConfirm(true);
-  };
+  const permissions = getPermissionsForUser(currentUser);
+  const allowedTabs = permissions.allowedTabs || ['INVENTORY', 'VENDORS'];
 
-  const handleConfirmReset = () => {
-    setShowConfirm(false);
-    onReset();
-  };
-
-  const tourSteps = [
-    {
-      step: 1,
-      title: '1. Monitor Inventory',
-      desc: 'Glance at the 4 top KPI cards and the Depot Health matrix to see physical On-Hand vs Target holding levels.'
-    },
-    {
-      step: 2,
-      title: '2. Spot the Disbalance',
-      desc: 'Notice Chicago is in Red Deficit for medical sensors, while Dallas holds excess Green Surplus.'
-    },
-    {
-      step: 3,
-      title: '3. Review Recommendations',
-      desc: 'Nexus automatically calculates the exact safe quantity to transfer without draining the donor warehouse.'
-    },
-    {
-      step: 4,
-      title: '4. Stage Transfer',
-      desc: 'Click "Stage Transfer" to reserve stock at the origin dock under atomic database concurrency control.'
-    },
-    {
-      step: 5,
-      title: '5. Dispatch & Track',
-      desc: 'Dispatch freight into transit, receive it at destination, and watch the Chicago depot turn healthy Green!'
+  // Close avatar dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target)) {
+        setIsAvatarMenuOpen(false);
+      }
     }
-  ];
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleRoleChange = (e) => {
+    const selectedId = e.target.value;
+    if (selectedId && selectedId !== currentUser?.id) {
+      switchRole(selectedId);
+      setIsAvatarMenuOpen(false);
+    }
+  };
 
   return (
-    <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 py-3">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-        {/* Brand identity */}
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-sm shadow-xs border border-indigo-400/30 shrink-0">
+    <header className="h-16 bg-white border-b border-[#F3E3E8] sticky top-0 z-30 px-4 sm:px-8">
+      <div className="max-w-[1200px] h-full mx-auto flex items-center justify-between gap-4">
+        {/* Left: Brand logo + name + subtitle */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="h-8 w-8 rounded-lg bg-[#E11D48] flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-subtle">
             N
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-semibold tracking-tight text-white">
-                Nexus
-              </h1>
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
-                Product 18 • Supply Chain OS
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 hidden sm:block mt-0.5">
-              Multi-depot rebalancing and supplier SLA compliance
-            </p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-base font-semibold tracking-tight text-[#1F1720]">
+              Nexus
+            </span>
+            <span className="text-xs text-[#8A8190] font-normal hidden sm:inline">
+              Supply Chain OS · India
+            </span>
           </div>
         </div>
 
-        {/* Center: Module Navigation Switcher */}
+        {/* Center: Underline Tab Switcher */}
         {onSelectModule && (
-          <div className="flex items-center p-1 rounded-xl bg-slate-950/80 border border-slate-800 self-start md:self-center">
-            <button
-              type="button"
-              onClick={() => onSelectModule('INVENTORY')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition ${
-                activeModule === 'INVENTORY'
-                  ? 'bg-indigo-600 text-white shadow-xs font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Warehouse className="w-3.5 h-3.5" />
-              <span>Inventory Balancing</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onSelectModule('VENDORS')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition ${
-                activeModule === 'VENDORS'
-                  ? 'bg-indigo-600 text-white shadow-xs font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Vendor SLA Monitoring</span>
-            </button>
-          </div>
+          <nav className="flex items-center h-full overflow-x-auto no-scrollbar" aria-label="Tabs">
+            {allowedTabs.includes('EXECUTIVE') && (
+              <button
+                type="button"
+                onClick={() => onSelectModule('EXECUTIVE')}
+                className={`h-full px-3.5 flex items-center text-xs sm:text-sm transition-colors whitespace-nowrap border-b-2 font-medium ${
+                  activeModule === 'EXECUTIVE'
+                    ? 'text-[#E11D48] border-[#E11D48]'
+                    : 'text-[#8A8190] hover:text-[#1F1720] border-transparent'
+                }`}
+              >
+                Executive
+              </button>
+            )}
+
+            {allowedTabs.includes('INVENTORY') && (
+              <button
+                type="button"
+                onClick={() => onSelectModule('INVENTORY')}
+                className={`h-full px-3.5 flex items-center text-xs sm:text-sm transition-colors whitespace-nowrap border-b-2 font-medium ${
+                  activeModule === 'INVENTORY'
+                    ? 'text-[#E11D48] border-[#E11D48]'
+                    : 'text-[#8A8190] hover:text-[#1F1720] border-transparent'
+                }`}
+              >
+                Inventory Balancing
+              </button>
+            )}
+
+            {allowedTabs.includes('VENDORS') && (
+              <button
+                type="button"
+                onClick={() => onSelectModule('VENDORS')}
+                className={`h-full px-3.5 flex items-center text-xs sm:text-sm transition-colors whitespace-nowrap border-b-2 font-medium ${
+                  activeModule === 'VENDORS'
+                    ? 'text-[#E11D48] border-[#E11D48]'
+                    : 'text-[#8A8190] hover:text-[#1F1720] border-transparent'
+                }`}
+              >
+                Vendor SLA Monitoring
+              </button>
+            )}
+
+            {allowedTabs.includes('FLEET') && (
+              <button
+                type="button"
+                onClick={() => onSelectModule('FLEET')}
+                className={`h-full px-3.5 flex items-center text-xs sm:text-sm transition-colors whitespace-nowrap border-b-2 font-medium ${
+                  activeModule === 'FLEET'
+                    ? 'text-[#E11D48] border-[#E11D48]'
+                    : 'text-[#8A8190] hover:text-[#1F1720] border-transparent'
+                }`}
+              >
+                Shipments &amp; Freight Flow
+              </button>
+            )}
+
+            {allowedTabs.includes('PO_QUEUE') && (
+              <button
+                type="button"
+                onClick={() => onSelectModule('PO_QUEUE')}
+                className={`h-full px-3.5 flex items-center text-xs sm:text-sm transition-colors whitespace-nowrap border-b-2 font-medium ${
+                  activeModule === 'PO_QUEUE'
+                    ? 'text-[#E11D48] border-[#E11D48]'
+                    : 'text-[#8A8190] hover:text-[#1F1720] border-transparent'
+                }`}
+              >
+                PO Queue (18% GST)
+              </button>
+            )}
+
+            {allowedTabs.includes('VENDOR_PORTAL') && (
+              <button
+                type="button"
+                onClick={() => onSelectModule('VENDOR_PORTAL')}
+                className={`h-full px-3.5 flex items-center text-xs sm:text-sm transition-colors whitespace-nowrap border-b-2 font-medium ${
+                  activeModule === 'VENDOR_PORTAL'
+                    ? 'text-[#E11D48] border-[#E11D48]'
+                    : 'text-[#8A8190] hover:text-[#1F1720] border-transparent'
+                }`}
+              >
+                Vendor Portal
+              </button>
+            )}
+
+            {allowedTabs.includes('ADMIN') && (
+              <button
+                type="button"
+                onClick={() => onSelectModule('ADMIN')}
+                className={`h-full px-3.5 flex items-center text-xs sm:text-sm transition-colors whitespace-nowrap border-b-2 font-medium ${
+                  activeModule === 'ADMIN'
+                    ? 'text-[#E11D48] border-[#E11D48]'
+                    : 'text-[#8A8190] hover:text-[#1F1720] border-transparent'
+                }`}
+              >
+                Admin
+              </button>
+            )}
+          </nav>
         )}
 
-        {/* Header Action Controls */}
-        <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
-          {/* Simple / Detailed Mode Toggle */}
+        {/* Right: Theme Toggle + Bell Icon + User Avatar Menu */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Dark / Light Theme Toggle */}
           <button
             type="button"
-            onClick={onToggleDetailed}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border transition ${
-              isDetailed
-                ? 'bg-indigo-950/50 text-indigo-300 border-indigo-500/40 font-semibold'
-                : 'bg-slate-800/80 text-slate-300 border-slate-700/60 hover:bg-slate-750 font-medium'
-            }`}
-            title="Toggle between simplified 2-minute overview and detailed metrics"
+            onClick={toggleTheme}
+            className="p-2 rounded-full hover:bg-[#FFF5F7] text-[#8A8190] hover:text-[#1F1720] transition relative"
+            title={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
+            aria-label={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>{isDetailed ? 'Mode: Detailed' : 'Mode: Simple'}</span>
+            {isDark ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-[#8A8190]" />
+            )}
           </button>
 
-          {/* Demo Guide Button */}
-          <button
-            type="button"
-            onClick={() => setShowTour(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition shadow-xs"
-            title="Open 5-step quick demo walkthrough"
-          >
-            <Compass className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Demo Guide</span>
-          </button>
+          {/* Notifications Bell */}
+          <NotificationDropdown
+            notifications={notifications}
+            currentUser={currentUser}
+            onNavigate={onSelectModule}
+            onMarkAllRead={onMarkAllRead}
+          />
 
-          {/* Live Refresh button */}
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            title="Refresh network data"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 transition disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-indigo-400' : 'text-slate-400'}`} />
-            <span className="hidden sm:inline">Sync</span>
-          </button>
+          {/* Avatar Menu Container */}
+          <div className="relative" ref={avatarMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsAvatarMenuOpen(!isAvatarMenuOpen)}
+              className="flex items-center gap-2 p-1.5 rounded-full hover:bg-[#FFF5F7] transition"
+              aria-label="User profile menu"
+            >
+              <div className="h-8 w-8 rounded-full bg-[#FFE4EA] text-[#BE123C] flex items-center justify-center font-semibold text-xs border border-[#F3E3E8]">
+                {currentUser?.avatar || 'U'}
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-[#8A8190]" />
+            </button>
 
-          {/* Reset button with confirmation */}
-          <button
-            type="button"
-            onClick={handleResetClick}
-            disabled={isResetting}
-            title="Reset to synthetic baseline"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-rose-500/15 text-slate-300 hover:text-rose-300 border border-slate-700/60 hover:border-rose-500/30 transition disabled:opacity-50"
-          >
-            <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin text-rose-400' : 'text-slate-400'}`} />
-            <span>Reset Demo</span>
-          </button>
+            {/* Avatar Dropdown Drawer */}
+            {isAvatarMenuOpen && (
+              <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-white border border-[#F3E3E8] shadow-card z-50 p-3 space-y-3">
+                {/* User info */}
+                <div className="px-2 py-1.5 border-b border-[#F3E3E8]">
+                  <p className="text-sm font-semibold text-[#1F1720] truncate">
+                    {currentUser?.name}
+                  </p>
+                  <p className="text-xs text-[#8A8190] truncate mt-0.5">
+                    {currentUser?.title || currentUser?.role}
+                  </p>
+                </div>
+
+                {/* Switch Demo Role Selector */}
+                <div className="px-2 space-y-1">
+                  <label className="text-[11px] font-medium text-[#8A8190] uppercase tracking-wider block">
+                    Switch Demo Role
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={currentUser?.id || ''}
+                      onChange={handleRoleChange}
+                      className="w-full pl-2.5 pr-7 py-2 text-xs rounded-xl bg-[#FFF5F7] text-[#1F1720] border border-[#F3E3E8] focus:outline-none focus:ring-1 focus:ring-[#E11D48] cursor-pointer font-medium appearance-none"
+                    >
+                      {demoUsers.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.role})
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-[#8A8190] absolute right-2.5 top-2.5 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Actions list */}
+                <div className="space-y-1 pt-1 border-t border-[#F3E3E8]">
+                  {/* Theme Mode Toggle in Menu */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleTheme();
+                      setIsAvatarMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-2.5 py-2 text-xs rounded-xl hover:bg-[#FFF5F7] text-[#4B4350] transition"
+                  >
+                    <span className="flex items-center gap-2">
+                      {isDark ? (
+                        <Sun className="w-4 h-4 text-amber-400" />
+                      ) : (
+                        <Moon className="w-4 h-4 text-[#8A8190]" />
+                      )}
+                      <span>Theme Mode</span>
+                    </span>
+                    <span className="text-[11px] font-medium text-[#E11D48] bg-[#FFE4EA] px-2 py-0.5 rounded-full capitalize">
+                      {theme}
+                    </span>
+                  </button>
+
+                  {/* Mode Simple/Detailed Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onToggleDetailed();
+                      setIsAvatarMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-2.5 py-2 text-xs rounded-xl hover:bg-[#FFF5F7] text-[#4B4350] transition"
+                  >
+                    <span className="flex items-center gap-2">
+                      <SlidersHorizontal className="w-4 h-4 text-[#8A8190]" />
+                      <span>Display Mode</span>
+                    </span>
+                    <span className="text-[11px] font-medium text-[#E11D48] bg-[#FFE4EA] px-2 py-0.5 rounded-full">
+                      {isDetailed ? 'Detailed' : 'Simple'}
+                    </span>
+                  </button>
+
+                  {/* Demo Guide */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRoleGuide(true);
+                      setIsAvatarMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 text-xs rounded-xl hover:bg-[#FFF5F7] text-[#4B4350] transition"
+                  >
+                    <Compass className="w-4 h-4 text-[#8A8190]" />
+                    <span>Demo Walkthrough Guide</span>
+                  </button>
+
+                  {/* Sync */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRefresh();
+                      setIsAvatarMenuOpen(false);
+                    }}
+                    disabled={isRefreshing}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 text-xs rounded-xl hover:bg-[#FFF5F7] text-[#4B4350] transition disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-[#8A8190] ${isRefreshing ? 'animate-spin text-[#E11D48]' : ''}`} />
+                    <span>Sync Depot Network</span>
+                  </button>
+
+                  {/* Reset Demo */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowConfirmReset(true);
+                      setIsAvatarMenuOpen(false);
+                    }}
+                    disabled={isResetting}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 text-xs rounded-xl hover:bg-[#FDECEA] text-[#B42318] transition disabled:opacity-50"
+                  >
+                    <RotateCcw className="w-4 h-4 text-[#B42318]" />
+                    <span>Reset Demo Baseline</span>
+                  </button>
+                </div>
+
+                {/* Logout */}
+                <div className="pt-1 border-t border-[#F3E3E8]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      logout();
+                      setIsAvatarMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 text-xs rounded-xl hover:bg-[#FDECEA] text-[#B42318] transition"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Log Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 5-Step Demo Walkthrough Modal */}
-      {showTour && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-5 max-w-lg w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Compass className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-semibold text-white">2-Minute Demo Script</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowTour(false)}
-                className="text-slate-400 hover:text-slate-200 p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Stepper Dots */}
-            <div className="flex items-center justify-between px-2">
-              {tourSteps.map(s => (
-                <button
-                  key={s.step}
-                  type="button"
-                  onClick={() => setTourStep(s.step)}
-                  className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition ${
-                    tourStep === s.step
-                      ? 'bg-indigo-600 text-white ring-2 ring-indigo-400/40'
-                      : tourStep > s.step
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : 'bg-slate-800 text-slate-400 border border-slate-700'
-                  }`}
-                >
-                  {tourStep > s.step ? <CheckCircle2 className="w-4 h-4" /> : s.step}
-                </button>
-              ))}
-            </div>
-
-            {/* Step Content */}
-            <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
-              <h4 className="text-sm font-bold text-white">{tourSteps[tourStep - 1].title}</h4>
-              <p className="text-xs text-slate-300 leading-relaxed">{tourSteps[tourStep - 1].desc}</p>
-            </div>
-
-            {/* Stepper Navigation */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                disabled={tourStep === 1}
-                onClick={() => setTourStep(prev => prev - 1)}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-850 hover:bg-slate-800 text-slate-300 disabled:opacity-30 transition"
-              >
-                Previous
-              </button>
-
-              <span className="text-[11px] text-slate-400">
-                Step {tourStep} of {tourSteps.length}
-              </span>
-
-              {tourStep < tourSteps.length ? (
-                <button
-                  type="button"
-                  onClick={() => setTourStep(prev => prev + 1)}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1 shadow-xs"
-                >
-                  <span>Next</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowTour(false)}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-xs"
-                >
-                  Start Live Demo
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Role-Aware Demo Guide Modal */}
+      <RoleDemoGuideModal
+        isOpen={showRoleGuide}
+        onClose={() => setShowRoleGuide(false)}
+        onSwitchRole={(newRoleId) => switchRole(newRoleId)}
+      />
 
       {/* Reset Confirmation Modal */}
-      {showConfirm && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 max-w-sm w-full shadow-2xl space-y-4">
-            <div className="space-y-1.5">
-              <h3 className="text-sm font-semibold text-white">Reset Demo State?</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                {activeModule === 'VENDORS'
-                  ? 'This resets suppliers, orders, and delivery histories back to initial baseline data.'
-                  : 'This restores initial depot stock levels (Chicago in deficit, Dallas in surplus) and clears transfer history.'}
-              </p>
-            </div>
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800/80">
+      {showConfirmReset && (
+        <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-[#F3E3E8] rounded-2xl p-6 max-w-sm w-full shadow-card space-y-4">
+            <h3 className="text-base font-semibold text-[#1F1720]">Reset Demo Environment?</h3>
+            <p className="text-xs text-[#4B4350] leading-relaxed">
+              This will restore all Indian depot on-hand stocks to baseline (495 units total), clear staged transfers, and reset vendor SLA metrics.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#F3E3E8]">
               <button
                 type="button"
-                onClick={() => setShowConfirm(false)}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                onClick={() => setShowConfirmReset(false)}
+                className="px-3.5 py-2 rounded-xl text-xs font-medium text-[#4B4350] hover:bg-[#FFF5F7] transition"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleConfirmReset}
-                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-500 text-white transition shadow-xs"
+                onClick={() => {
+                  setShowConfirmReset(false);
+                  onReset();
+                }}
+                className="px-4 py-2 rounded-xl bg-[#E11D48] hover:bg-[#BE123C] text-white text-xs font-semibold transition shadow-subtle"
               >
                 Confirm Reset
               </button>

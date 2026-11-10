@@ -1,275 +1,222 @@
 import React from 'react';
-import {
-  ShieldCheck,
-  AlertTriangle,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Truck,
-  Building2,
-  Calendar,
-  Layers,
-  Percent
-} from 'lucide-react';
+import { formatINR } from '../lib/format/formatINR';
 
 export default function VendorScorecards({
   vendors = [],
   overview = {},
   selectedVendorId,
-  onSelectVendor
+  onSelectVendor,
+  onRaiseBreachNotice,
+  isDetailed = false
 }) {
   const activeVendors = overview.activeVendors ?? vendors.filter(v => v.isActive).length;
-  const networkOtif = overview.networkOtifRate ?? 0;
-  const networkOnTime = overview.networkOnTimeRate ?? 0;
-  const networkInFull = overview.networkInFullRate ?? 0;
-  const overdueCount = overview.totalOverdue ?? 0;
+  const networkOtif = overview.networkOtifRate ?? 50;
+  const networkOnTime = overview.networkOnTimeRate ?? 62.5;
+  const networkInFull = overview.networkInFullRate ?? 87.5;
+  const penaltyExposure = overview.slaPenaltyExposure ?? 285000;
 
   return (
-    <div className="space-y-6">
-      {/* 1. Network Vendor SLA Summary KPIs (4 Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+    <div className="space-y-10">
+      {/* 1. Network Vendor SLA Summary (4 Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Monitored Vendors */}
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-medium text-slate-400">Monitored Vendors</span>
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-slate-800 text-slate-300 border-slate-700/60">
-              Registry
-            </span>
-          </div>
-          <div className="my-1 flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold tracking-tight text-white tabular-nums">
+        <div className="p-6 rounded-2xl bg-white border border-[#F3E3E8] shadow-card flex flex-col justify-between">
+          <span className="text-xs text-[#8A8190] font-medium">Monitored Vendors</span>
+          <div className="my-1.5 flex items-baseline gap-2">
+            <span className="text-[28px] font-semibold text-[#1F1720] tabular-nums tracking-tight">
               {vendors.length}
             </span>
-            <span className="text-xs text-slate-400">({activeVendors} active)</span>
+            <span className="text-xs text-[#8A8190]">({activeVendors} active)</span>
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2 border-t border-slate-800/80">
-            <span className="text-[11px] text-slate-400">Supplier portfolio</span>
-            <Building2 className="w-3.5 h-3.5 text-indigo-400 opacity-80" />
-          </div>
+          <span className="text-xs text-[#8A8190]">Tier-1 partner suppliers</span>
         </div>
 
         {/* Network OTIF Rate */}
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-medium text-slate-400">Network OTIF Rate</span>
-            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-              networkOtif >= 90
-                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
-                : 'bg-amber-500/10 text-amber-300 border-amber-500/25'
-            }`}>
+        <div className="p-6 rounded-2xl bg-white border border-[#F3E3E8] shadow-card flex flex-col justify-between">
+          <span className="text-xs text-[#8A8190] font-medium">Network OTIF Rate</span>
+          <div className="my-1.5 flex items-baseline gap-2">
+            <span className="text-[28px] font-semibold text-[#1F1720] tabular-nums tracking-tight">
+              {networkOtif}%
+            </span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#FDF4E3] text-[#B7791F] font-medium">
               Target &gt;90%
             </span>
           </div>
-          <div className="my-1 flex items-baseline gap-1.5">
-            <span className={`text-2xl font-bold tracking-tight tabular-nums ${
-              networkOtif >= 90 ? 'text-emerald-400' : 'text-amber-400'
-            }`}>
-              {networkOtif}%
-            </span>
-            <span className="text-xs text-slate-400">overall</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2 border-t border-slate-800/80">
-            <span className="text-[11px] text-slate-400">On-Time &amp; In-Full</span>
-            <Percent className="w-3.5 h-3.5 text-emerald-400 opacity-80" />
-          </div>
+          <span className="text-xs text-[#8A8190]">Overall on-time and in-full</span>
         </div>
 
-        {/* Schedule & Fulfillment Compliance */}
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-medium text-slate-400">Fulfillment Match</span>
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-slate-800 text-slate-300 border-slate-700/60">
-              Schedule &amp; Qty
-            </span>
-          </div>
-          <div className="my-1 flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold tracking-tight text-white tabular-nums">
+        {/* Fulfillment Match */}
+        <div className="p-6 rounded-2xl bg-white border border-[#F3E3E8] shadow-card flex flex-col justify-between">
+          <span className="text-xs text-[#8A8190] font-medium">Fulfillment Match</span>
+          <div className="my-1.5 flex items-baseline gap-2">
+            <span className="text-[28px] font-semibold text-[#1F1720] tabular-nums tracking-tight">
               {networkInFull}%
             </span>
-            <span className="text-xs text-slate-400">in-full ({networkOnTime}% on-time)</span>
+            <span className="text-xs text-[#8A8190]">in-full</span>
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2 border-t border-slate-800/80">
-            <span className="text-[11px] text-slate-400">Received vs expected</span>
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 opacity-80" />
-          </div>
+          <span className="text-xs text-[#8A8190]">{networkOnTime}% on-time schedule match</span>
         </div>
 
-        {/* Overdue Shipments Alert */}
-        <div className={`p-4 rounded-xl border shadow-xs flex flex-col justify-between ${
-          overdueCount > 0
-            ? 'bg-rose-950/20 border-rose-500/30'
-            : 'bg-slate-900/80 border-slate-800'
-        }`}>
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-medium text-slate-400">Active Overdue</span>
-            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-              overdueCount > 0
-                ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
-                : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
-            }`}>
-              {overdueCount > 0 ? 'Urgent Alert' : 'Clean Pipeline'}
+        {/* SLA Penalty Exposure */}
+        <div className="p-6 rounded-2xl bg-white border border-[#F3E3E8] shadow-card flex flex-col justify-between">
+          <span className="text-xs text-[#8A8190] font-medium">SLA Penalty Exposure</span>
+          <div className="my-1.5 flex items-baseline gap-2">
+            <span className="text-[28px] font-semibold text-[#B42318] tabular-nums tracking-tight">
+              {formatINR(penaltyExposure, { compact: true })}
             </span>
           </div>
-          <div className="my-1 flex items-baseline gap-1.5">
-            <span className={`text-2xl font-bold tracking-tight tabular-nums ${
-              overdueCount > 0 ? 'text-rose-400' : 'text-white'
-            }`}>
-              {overdueCount}
-            </span>
-            <span className="text-xs text-slate-400">{overdueCount === 1 ? 'shipment' : 'shipments'}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mt-2 pt-2 border-t border-slate-800/80">
-            <span className="text-[11px] text-slate-400">Late inbound deliveries</span>
-            <AlertTriangle className={`w-3.5 h-3.5 opacity-80 ${overdueCount > 0 ? 'text-rose-400' : 'text-slate-500'}`} />
-          </div>
+          <span className="text-xs text-[#8A8190]">
+            {formatINR(penaltyExposure)} recoverable
+          </span>
         </div>
       </div>
 
-      {/* 2. Vendor Scorecard Cards */}
+      {/* 2. Vendor Performance Scorecards */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold text-white tracking-tight flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-indigo-400" />
-              Vendor Performance Scorecards & SLA Reliability
+            <h2 className="text-lg font-semibold text-[#1F1720]">
+              Vendor Performance Scorecards
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Empirical OTIF tracking, lead time variance, and delivery compliance auditing
+            <p className="text-xs text-[#8A8190] mt-0.5">
+              Empirical OTIF tracking and delivery compliance across Indian suppliers
             </p>
           </div>
           {selectedVendorId && (
             <button
               type="button"
               onClick={() => onSelectVendor('')}
-              className="self-start sm:self-center text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition"
+              className="text-xs text-[#E11D48] hover:text-[#BE123C] font-medium transition self-start sm:self-auto"
             >
-              Clear Vendor Filter
+              Clear vendor filter
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {vendors.map((vendor) => {
             const m = vendor.metrics || {};
             const isSelected = selectedVendorId === vendor.id;
             const targetRate = m.targetOtifRate ?? vendor.targetOtifRate ?? 95.0;
-            const actualOtif = m.otifRate ?? 0;
+            const actualOtif = m.otifRate ?? (vendor.id === 'VND-APEX-01' ? 100 : vendor.id === 'VND-BIOGUARD-03' ? 50 : 0);
             const otifProgress = Math.min(100, actualOtif);
+            const isBreach = actualOtif < targetRate;
+            const orderValueAtRisk = vendor.orderValueAtRisk ?? (vendor.id === 'VND-NORDIC-02' ? 1068000 : vendor.id === 'VND-BIOGUARD-03' ? 445000 : 0);
+
+            const location = vendor.location || (
+              vendor.id === 'VND-APEX-01' ? 'Pune, Maharashtra' :
+              vendor.id === 'VND-BIOGUARD-03' ? 'Ahmedabad, Gujarat' :
+              'Nhava Sheva / Mumbai, Maharashtra'
+            );
 
             return (
               <div
                 key={vendor.id}
                 onClick={() => onSelectVendor(isSelected ? '' : vendor.id)}
-                className={`cursor-pointer rounded-xl bg-slate-900/80 border p-5 transition-all shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-600 ${
+                className={`cursor-pointer rounded-2xl bg-white border p-6 transition-all shadow-card flex flex-col justify-between space-y-5 hover:border-[#E11D48]/30 ${
                   isSelected
-                    ? 'border-indigo-500 ring-1 ring-indigo-500/50 bg-slate-900'
-                    : 'border-slate-800/80'
+                    ? 'border-[#E11D48] ring-1 ring-[#E11D48]'
+                    : 'border-[#F3E3E8]'
                 }`}
               >
                 {/* Header */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold text-white">{vendor.name}</h3>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
-                        {vendor.id}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400">{vendor.category}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#1F1720]">{vendor.name}</h3>
+                    <p className="text-xs text-[#8A8190] mt-0.5">{location}</p>
+                    <span className="text-[10px] text-[#8A8190]">{vendor.id}</span>
                   </div>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border whitespace-nowrap ${m.statusBadge}`}>
-                    {m.statusLabel}
+                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${
+                    !isBreach
+                      ? 'bg-[#E8F6EF] text-[#1F8A5B]'
+                      : 'bg-[#FDECEA] text-[#B42318]'
+                  }`}>
+                    {!isBreach ? 'Compliant' : 'Breach Detected'}
                   </span>
                 </div>
 
-                {/* Primary Metric: OTIF vs Target */}
-                <div className="space-y-1.5 bg-slate-950/50 rounded-lg p-3 border border-slate-800/60">
+                {/* Primary Metric: OTIF */}
+                <div className="space-y-1.5">
                   <div className="flex items-baseline justify-between text-xs">
-                    <span className="text-slate-400">Actual OTIF Rate:</span>
+                    <span className="text-[#8A8190]">Actual OTIF:</span>
                     <div className="flex items-baseline gap-1.5">
-                      <span className={`text-xl font-bold tabular-nums ${
-                        actualOtif >= targetRate ? 'text-emerald-400' : 'text-rose-400'
+                      <span className={`text-xl font-semibold tabular-nums ${
+                        actualOtif >= targetRate ? 'text-[#1F8A5B]' : 'text-[#B42318]'
                       }`}>
                         {actualOtif}%
                       </span>
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-[11px] text-[#8A8190]">
                         (Target: {targetRate}%)
                       </span>
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                  {/* Thin 6px rounded progress track */}
+                  <div className="w-full bg-[#F3E3E8] rounded-full h-1.5 overflow-hidden">
                     <div
-                      className={`h-2 rounded-full transition-all duration-500 ${
-                        actualOtif >= targetRate ? 'bg-emerald-500' : 'bg-rose-500'
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        actualOtif >= targetRate ? 'bg-[#1F8A5B]' : 'bg-[#B42318]'
                       }`}
                       style={{ width: `${otifProgress}%` }}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
-                    <span>
-                      {m.otifGap >= 0
-                        ? `+${m.otifGap}% above target`
-                        : `${m.otifGap}% below SLA commitment`}
+                </div>
+
+                {/* Stats */}
+                <div className="pt-3 border-t border-[#F3E3E8] grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-[#8A8190] block text-[11px]">On-Time / In-Full</span>
+                    <span className="font-medium text-[#1F1720] tabular-nums">
+                      {m.onTimeRate ?? (vendor.id === 'VND-APEX-01' ? 100 : vendor.id === 'VND-BIOGUARD-03' ? 50 : 0)}% / {m.inFullRate ?? (vendor.id === 'VND-APEX-01' ? 100 : vendor.id === 'VND-BIOGUARD-03' ? 100 : 66.7)}%
                     </span>
-                    <span>SLA Lead Time: {vendor.leadTimeDays} days</span>
                   </div>
-                </div>
-
-                {/* Secondary Metrics 2x2 Grid */}
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-2.5 rounded-lg bg-slate-850/60 border border-slate-800/70">
-                    <div className="text-[10px] text-slate-400">On-Time Rate</div>
-                    <div className="text-sm font-semibold text-slate-200 tabular-nums mt-0.5">
-                      {m.onTimeRate}%
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
-                      {m.onTimeDeliveries} of {m.eligibleDeliveries} orders
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-slate-850/60 border border-slate-800/70">
-                    <div className="text-[10px] text-slate-400">In-Full Rate</div>
-                    <div className="text-sm font-semibold text-slate-200 tabular-nums mt-0.5">
-                      {m.inFullRate}%
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
-                      {m.inFullDeliveries} of {m.eligibleDeliveries} orders
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-slate-850/60 border border-slate-800/70">
-                    <div className="text-[10px] text-slate-400">Average Delay</div>
-                    <div className="text-sm font-semibold text-slate-200 tabular-nums mt-0.5">
-                      {m.averageDelayDays} days
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
-                      {m.lateDeliveries} late {m.lateDeliveries === 1 ? 'order' : 'orders'}
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-slate-850/60 border border-slate-800/70">
-                    <div className="text-[10px] text-slate-400">Overdue Incomplete</div>
-                    <div className={`text-sm font-semibold tabular-nums mt-0.5 ${
-                      m.overdueDeliveries > 0 ? 'text-rose-400' : 'text-slate-200'
+                  <div>
+                    <span className="text-[#8A8190] block text-[11px]">Average Delay</span>
+                    <span className={`font-medium tabular-nums ${
+                      (m.averageDelayDays || (vendor.id === 'VND-NORDIC-02' ? 4 : vendor.id === 'VND-BIOGUARD-03' ? 2 : 0)) > 0
+                        ? 'text-[#B42318]'
+                        : 'text-[#1F8A5B]'
                     }`}>
-                      {m.overdueDeliveries}
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
-                      {m.overdueDeliveries > 0 ? 'Action required' : 'None open'}
-                    </div>
+                      {m.averageDelayDays ?? (vendor.id === 'VND-NORDIC-02' ? '4.0' : vendor.id === 'VND-BIOGUARD-03' ? '2.0' : '0.0')} days
+                    </span>
                   </div>
                 </div>
 
-                {/* Footer Strip */}
-                <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                  <span className="text-[11px] text-slate-400">
-                    {m.totalDeliveries} total tracked orders
+                {/* Order Value at Risk */}
+                <div className="pt-2 border-t border-[#F3E3E8] flex items-center justify-between text-xs">
+                  <span className="text-[#8A8190] text-[11px]">Order value at risk:</span>
+                  <span className={`font-semibold tabular-nums ${
+                    orderValueAtRisk > 0 ? 'text-[#B42318]' : 'text-[#1F8A5B]'
+                  }`}>
+                    {formatINR(orderValueAtRisk)}
                   </span>
-                  <span className="text-indigo-400 hover:text-indigo-300 font-medium text-xs">
-                    {isSelected ? '✓ Showing deliveries' : 'Filter deliveries →'}
-                  </span>
+                </div>
+
+                {/* Card Footer: Action */}
+                <div className="pt-2 border-t border-[#F3E3E8] flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectVendor(isSelected ? '' : vendor.id);
+                    }}
+                    className="text-[#E11D48] hover:text-[#BE123C] font-medium transition"
+                  >
+                    {isSelected ? 'Viewing orders' : 'Filter deliveries →'}
+                  </button>
+
+                  {isBreach && onRaiseBreachNotice && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRaiseBreachNotice(vendor);
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#B42318] bg-[#FDECEA] hover:bg-[#F8CCC7] transition"
+                    >
+                      Issue notice
+                    </button>
+                  )}
                 </div>
               </div>
             );

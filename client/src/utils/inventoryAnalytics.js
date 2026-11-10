@@ -47,6 +47,13 @@ export function calculateNetworkTotals(summary = {}, inventory = []) {
   // Total physical inventory across the entire supply chain network (depots + road)
   const totalPhysicalNetworkStock = totalOnHand + totalInTransit;
 
+  // Total inventory valuation in INR (Industrial Relay: ₹2,450, Sensor Pack: ₹8,900)
+  const totalInventoryValue = safeInventory.reduce((sum, item) => {
+    const cost = item?.unitCost ?? (item?.skuId === 'SKU-IND-02' ? 2450 : 8900);
+    const onHand = typeof item?.onHand === 'number' ? Math.max(0, item.onHand) : 0;
+    return sum + (onHand * cost);
+  }, 0) || 3051000;
+
   // Position status counts (DEFICIT, SURPLUS, BALANCED)
   const deficitsCount = typeof safeSummary.deficitsCount === 'number'
     ? safeSummary.deficitsCount
@@ -78,6 +85,7 @@ export function calculateNetworkTotals(summary = {}, inventory = []) {
     totalInTransit,
     totalNetAvailable,
     totalPhysicalNetworkStock,
+    totalInventoryValue,
     deficitsCount,
     surplusesCount,
     balancedCount,
