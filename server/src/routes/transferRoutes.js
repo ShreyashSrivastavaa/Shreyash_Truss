@@ -14,6 +14,7 @@ import {
   getTransferHistory
 } from '../services/inventoryService.js';
 import prisma from '../db.js';
+import { authenticateUser, requireRole, requireDepotScope } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
@@ -71,7 +72,12 @@ router.get('/', async (req, res, next) => {
 });
 
 // POST /api/transfers - validates and creates a lateral inventory transfer in PENDING status
-router.post('/', async (req, res, next) => {
+router.post(
+  '/',
+  authenticateUser,
+  requireRole('HEAD_OF_SUPPLY_CHAIN', 'DEPOT_MANAGER', 'ADMIN'),
+  requireDepotScope(req => req.body?.fromDepotId),
+  async (req, res, next) => {
   const validationResult = createTransferSchema.safeParse(req.body);
   if (!validationResult.success) {
     return res.status(400).json({
@@ -96,7 +102,11 @@ router.post('/', async (req, res, next) => {
 });
 
 // POST /api/transfers/:id/dispatch - dispatches a PENDING transfer to IN_TRANSIT
-router.post('/:id/dispatch', async (req, res, next) => {
+router.post(
+  '/:id/dispatch',
+  authenticateUser,
+  requireRole('HEAD_OF_SUPPLY_CHAIN', 'DEPOT_MANAGER', 'ADMIN'),
+  async (req, res, next) => {
   const validationResult = transferIdParamSchema.safeParse(req.params);
   if (!validationResult.success) {
     return res.status(400).json({
@@ -121,7 +131,11 @@ router.post('/:id/dispatch', async (req, res, next) => {
 });
 
 // POST /api/transfers/:id/receive - marks an IN_TRANSIT transfer as RECEIVED
-router.post('/:id/receive', async (req, res, next) => {
+router.post(
+  '/:id/receive',
+  authenticateUser,
+  requireRole('HEAD_OF_SUPPLY_CHAIN', 'DEPOT_MANAGER', 'ADMIN'),
+  async (req, res, next) => {
   const validationResult = transferIdParamSchema.safeParse(req.params);
   if (!validationResult.success) {
     return res.status(400).json({
@@ -146,7 +160,11 @@ router.post('/:id/receive', async (req, res, next) => {
 });
 
 // POST /api/transfers/:id/cancel - cancels a PENDING transfer and releases reserved inventory
-router.post('/:id/cancel', async (req, res, next) => {
+router.post(
+  '/:id/cancel',
+  authenticateUser,
+  requireRole('HEAD_OF_SUPPLY_CHAIN', 'DEPOT_MANAGER', 'ADMIN'),
+  async (req, res, next) => {
   const validationResult = transferIdParamSchema.safeParse(req.params);
   if (!validationResult.success) {
     return res.status(400).json({

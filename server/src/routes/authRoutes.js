@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { registerSchema, loginSchema } from '../schemas/authSchema.js';
 import { registerUser, loginUser, getUserProfile } from '../services/authService.js';
-import { authenticateUser } from '../middleware/authMiddleware.js';
+import { authenticateUser, requireAuth } from '../middleware/authMiddleware.js';
 import prisma from '../db.js';
 
 const router = Router();
@@ -57,7 +57,7 @@ router.post('/login', async (req, res, next) => {
 });
 
 // GET /api/auth/me - Retrieve current user profile from token
-router.get('/me', authenticateUser, async (req, res, next) => {
+router.get('/me', authenticateUser, requireAuth, async (req, res, next) => {
   try {
     const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
     const user = await getUserProfile(req.user.sub, client);

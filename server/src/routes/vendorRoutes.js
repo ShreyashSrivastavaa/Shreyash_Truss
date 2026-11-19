@@ -20,6 +20,7 @@ import {
   resetVendorState
 } from '../services/vendorService.js';
 import prisma from '../db.js';
+import { authenticateUser, requireRole } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
@@ -179,7 +180,11 @@ router.get('/', async (req, res, next) => {
 });
 
 // POST /api/vendors - Register a new vendor profile
-router.post('/', async (req, res, next) => {
+router.post(
+  '/',
+  authenticateUser,
+  requireRole('HEAD_OF_SUPPLY_CHAIN', 'PROCUREMENT_MANAGER', 'ADMIN'),
+  async (req, res, next) => {
   const validation = createVendorSchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(400).json({
@@ -226,7 +231,11 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // PATCH /api/vendors/:id - Update vendor settings or SLA target
-router.patch('/:id', async (req, res, next) => {
+router.patch(
+  '/:id',
+  authenticateUser,
+  requireRole('HEAD_OF_SUPPLY_CHAIN', 'PROCUREMENT_MANAGER', 'ADMIN'),
+  async (req, res, next) => {
   const paramValidation = vendorIdParamSchema.safeParse(req.params);
   if (!paramValidation.success) {
     return res.status(400).json({
