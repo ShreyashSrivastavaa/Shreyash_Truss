@@ -19,15 +19,24 @@ import {
   updateDelivery,
   resetVendorState
 } from '../services/vendorService.js';
+import prisma from '../db.js';
 
 const router = Router();
+
+function getContext(req) {
+  const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
+  const referenceDate = req.query.referenceDate
+    ? new Date(req.query.referenceDate)
+    : (req.app.locals.referenceDate || new Date());
+  return { client, referenceDate };
+}
 
 // ==========================================
 // 1. DELIVERY ROUTES (MUST PRECEDE /:id)
 // ==========================================
 
 // GET /api/vendors/deliveries - List deliveries with optional filters
-router.get('/deliveries', async (req, res) => {
+router.get('/deliveries', async (req, res, next) => {
   const queryValidation = deliveryQuerySchema.safeParse(req.query);
   if (!queryValidation.success) {
     return res.status(400).json({
@@ -40,15 +49,16 @@ router.get('/deliveries', async (req, res) => {
   }
 
   try {
-    const result = await getDeliveries(queryValidation.data);
+    const { client, referenceDate } = getContext(req);
+    const result = await getDeliveries(queryValidation.data, referenceDate, client);
     res.status(200).json(result);
   } catch (err) {
-    res.status(err.statusCode || 500).json({ error: err.message });
+    next(err);
   }
 });
 
 // POST /api/vendors/deliveries - Record a new purchase order / delivery commitment
-router.post('/deliveries', async (req, res) => {
+router.post('/deliveries', async (req, res, next) => {
   const validation = createDeliverySchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(400).json({
@@ -61,18 +71,19 @@ router.post('/deliveries', async (req, res) => {
   }
 
   try {
-    const created = await createDelivery(validation.data);
+    const { client, referenceDate } = getContext(req);
+    const created = await createDelivery(validation.data, referenceDate, client);
     res.status(201).json({
       message: 'Delivery commitment recorded successfully',
       delivery: created
     });
   } catch (err) {
-    res.status(err.statusCode || 500).json({ error: err.message });
+    next(err);
   }
 });
 
 // GET /api/vendors/deliveries/:id - Get single delivery details
-router.get('/deliveries/:id', async (req, res) => {
+router.get('/deliveries/:id', async (req, res, next) => {
   const paramValidation = deliveryIdParamSchema.safeParse(req.params);
   if (!paramValidation.success) {
     return res.status(400).json({
@@ -85,15 +96,16 @@ router.get('/deliveries/:id', async (req, res) => {
   }
 
   try {
-    const delivery = await getDeliveryById(paramValidation.data.id);
+    const { client, referenceDate } = getContext(req);
+    const delivery = await getDeliveryById(paramValidation.data.id, referenceDate, client);
     res.status(200).json(delivery);
   } catch (err) {
-    res.status(err.statusCode || 500).json({ error: err.message });
+    next(err);
   }
 });
 
 // PATCH /api/vendors/deliveries/:id - Update delivery progress or intake
-router.patch('/deliveries/:id', async (req, res) => {
+router.patch('/deliveries/:id', async (req, res, next) => {
   const paramValidation = deliveryIdParamSchema.safeParse(req.params);
   if (!paramValidation.success) {
     return res.status(400).json({
@@ -117,13 +129,14 @@ router.patch('/deliveries/:id', async (req, res) => {
   }
 
   try {
-    const updated = await updateDelivery(paramValidation.data.id, bodyValidation.data);
+    const { client, referenceDate } = getContext(req);
+    const updated = await updateDelivery(paramValidation.data.id, bodyValidation.data, referenceDate, client);
     res.status(200).json({
       message: 'Delivery updated successfully',
       delivery: updated
     });
   } catch (err) {
-    res.status(err.statusCode || 500).json({ error: err.message });
+    next(err);
   }
 });
 
@@ -132,7 +145,7 @@ router.patch('/deliveries/:id', async (req, res) => {
 // ==========================================
 
 // POST /api/vendors/reset - Reset vendor & delivery state back to synthetic baseline
-router.post('/reset', async (req, res) => {
+router.post('/reset', async (req, res, next) => {
   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_RESET !== 'true') {
     return res.status(403).json({
       error: 'Forbidden: Demo state reset is disabled in production environment'
@@ -140,12 +153,13 @@ router.post('/reset', async (req, res) => {
   }
 
   try {
-    await resetVendorState();
+    const { client } = getContext(req);
+    await resetVendorState(client);
     res.status(200).json({
       message: 'Vendor SLA demo baseline successfully restored'
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
@@ -154,17 +168,18 @@ router.post('/reset', async (req, res) => {
 // ==========================================
 
 // GET /api/vendors - List all registered vendors with aggregated SLA scorecard metrics
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
-    const data = await getVendors();
+    const { client, referenceDate } = getContext(req);
+    const data = await getVendors(referenceDate, client);
     res.status(200).json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // POST /api/vendors - Register a new vendor profile
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   const validation = createVendorSchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(400).json({
@@ -177,18 +192,19 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const created = await createVendor(validation.data);
+    const { client } = getContext(req);
+    const created = await createVendor(validation.data, client);
     res.status(201).json({
       message: 'Vendor registered successfully',
       vendor: created
     });
   } catch (err) {
-    res.status(err.statusCode || 500).json({ error: err.message });
+    next(err);
   }
 });
 
 // GET /api/vendors/:id - Get single vendor scorecard and delivery history
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   const paramValidation = vendorIdParamSchema.safeParse(req.params);
   if (!paramValidation.success) {
     return res.status(400).json({
@@ -201,15 +217,16 @@ router.get('/:id', async (req, res) => {
   }
 
   try {
-    const vendor = await getVendorById(paramValidation.data.id);
+    const { client, referenceDate } = getContext(req);
+    const vendor = await getVendorById(paramValidation.data.id, referenceDate, client);
     res.status(200).json(vendor);
   } catch (err) {
-    res.status(err.statusCode || 500).json({ error: err.message });
+    next(err);
   }
 });
 
 // PATCH /api/vendors/:id - Update vendor settings or SLA target
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', async (req, res, next) => {
   const paramValidation = vendorIdParamSchema.safeParse(req.params);
   if (!paramValidation.success) {
     return res.status(400).json({
@@ -233,13 +250,14 @@ router.patch('/:id', async (req, res) => {
   }
 
   try {
-    const updated = await updateVendor(paramValidation.data.id, bodyValidation.data);
+    const { client } = getContext(req);
+    const updated = await updateVendor(paramValidation.data.id, bodyValidation.data, client);
     res.status(200).json({
       message: 'Vendor profile updated successfully',
       vendor: updated
     });
   } catch (err) {
-    res.status(err.statusCode || 500).json({ error: err.message });
+    next(err);
   }
 });
 

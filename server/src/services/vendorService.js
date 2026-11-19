@@ -1,51 +1,24 @@
 import prisma from '../db.js';
-import { initialVendors, initialVendorDeliveries } from '../data/mockVendorData.js';
+import { seed } from '../../prisma/seed.js';
 import {
   calculateDeliveryMetrics,
   calculateVendorSlaMetrics,
   calculateNetworkVendorOverview
 } from '../utils/slaCalculator.js';
 
-// In-memory working state (fallback & synthetic baseline)
-let vendors = JSON.parse(JSON.stringify(initialVendors));
-let deliveries = JSON.parse(JSON.stringify(initialVendorDeliveries));
-
 /**
- * Resets vendor state back to synthetic baseline data.
+ * Resets vendor state back to synthetic baseline data by re-seeding PostgreSQL.
  */
-export async function resetVendorState() {
-  vendors = JSON.parse(JSON.stringify(initialVendors));
-  deliveries = JSON.parse(JSON.stringify(initialVendorDeliveries));
-
-  if (prisma && prisma.vendorDelivery && prisma.vendor) {
-    try {
-      await prisma.vendorDelivery.deleteMany();
-      await prisma.vendor.deleteMany();
-    } catch {
-      // In-memory fallback is always reset cleanly
-    }
-  }
+export async function resetVendorState(client = prisma) {
+  await seed(client);
 }
 
 /**
  * Lists all vendors enriched with authoritative SLA scorecard metrics.
  */
-export async function getVendors(referenceTime = new Date()) {
-  let vendorList = vendors;
-  let deliveryList = deliveries;
-
-  if (prisma && prisma.vendor && prisma.vendorDelivery) {
-    try {
-      const dbVendors = await prisma.vendor.findMany({ orderBy: { id: 'asc' } });
-      const dbDeliveries = await prisma.vendorDelivery.findMany({ orderBy: { expectedDeliveryDate: 'desc' } });
-      if (dbVendors.length > 0) {
-        vendorList = dbVendors;
-        deliveryList = dbDeliveries;
-      }
-    } catch {
-      // Fall back to working in-memory state
-    }
-  }
+export async function getVendors(referenceTime = new Date(), client = prisma) {
+  const vendorList = await client.vendor.findMany({ orderBy: { id: 'asc' } });
+  const deliveryList = await client.vendorDelivery.findMany({ orderBy: { expectedDeliveryDate: 'desc' } });
 
   const overview = calculateNetworkVendorOverview(vendorList, deliveryList, referenceTime);
   return {
@@ -57,30 +30,18 @@ export async function getVendors(referenceTime = new Date()) {
 /**
  * Retrieves a single vendor by ID with SLA scorecard and delivery history.
  */
-export async function getVendorById(id, referenceTime = new Date()) {
-  let vendor = vendors.find(v => v.id === id);
-  let vendorDeliveries = deliveries.filter(d => d.vendorId === id);
-
-  if (prisma && prisma.vendor && prisma.vendorDelivery) {
-    try {
-      const dbVendor = await prisma.vendor.findUnique({ where: { id } });
-      if (dbVendor) {
-        vendor = dbVendor;
-        vendorDeliveries = await prisma.vendorDelivery.findMany({
-          where: { vendorId: id },
-          orderBy: { expectedDeliveryDate: 'desc' }
-        });
-      }
-    } catch {
-      // Fallback
-    }
-  }
-
+export async function getVendorById(id, referenceTime = new Date(), client = prisma) {
+  const vendor = await client.vendor.findUnique({ where: { id } });
   if (!vendor) {
     const error = new Error(`Vendor with ID '${id}' not found`);
     error.statusCode = 404;
     throw error;
   }
+
+  const vendorDeliveries = await client.vendorDelivery.findMany({
+    where: { vendorId: id },
+    orderBy: { expectedDeliveryDate: 'desc' }
+  });
 
   const scored = calculateVendorSlaMetrics(vendor, vendorDeliveries, referenceTime);
   const enrichedDeliveries = vendorDeliveries.map(d => ({
@@ -97,138 +58,92 @@ export async function getVendorById(id, referenceTime = new Date()) {
 /**
  * Registers a new vendor in the registry.
  */
-export async function createVendor(data) {
-  const existing = vendors.find(v => v.id === data.id);
+export async function createVendor(data, client = prisma) {
+  const existing = await client.vendor.findUnique({ where: { id: data.id } });
   if (existing) {
     const error = new Error(`Vendor with ID '${data.id}' already exists`);
     error.statusCode = 409;
     throw error;
   }
 
-  const newVendor = {
-    id: data.id,
-    name: data.name,
-    category: data.category || 'General Supplies',
-    contactEmail: data.contactEmail || '',
-    leadTimeDays: data.leadTimeDays ?? 5,
-    targetOtifRate: data.targetOtifRate ?? 95.0,
-    isActive: data.isActive ?? true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  vendors.push(newVendor);
-
-  if (prisma && prisma.vendor) {
-    try {
-      const dbCreated = await prisma.vendor.create({
-        data: {
-          id: newVendor.id,
-          name: newVendor.name,
-          category: newVendor.category,
-          contactEmail: newVendor.contactEmail,
-          leadTimeDays: newVendor.leadTimeDays,
-          targetOtifRate: newVendor.targetOtifRate,
-          isActive: newVendor.isActive
-        }
-      });
-      return calculateVendorSlaMetrics(dbCreated, deliveries);
-    } catch {
-      // In-memory state already updated
+  const dbCreated = await client.vendor.create({
+    data: {
+      id: data.id,
+      name: data.name,
+      category: data.category || 'General Supplies',
+      contactEmail: data.contactEmail || '',
+      leadTimeDays: data.leadTimeDays ?? 5,
+      targetOtifRate: data.targetOtifRate ?? 95.0,
+      isActive: data.isActive ?? true
     }
-  }
+  });
 
-  return calculateVendorSlaMetrics(newVendor, deliveries);
+  const allDeliveries = await client.vendorDelivery.findMany({ where: { vendorId: dbCreated.id } });
+  return calculateVendorSlaMetrics(dbCreated, allDeliveries);
 }
 
 /**
  * Updates vendor profile or SLA configuration.
  */
-export async function updateVendor(id, data) {
-  const index = vendors.findIndex(v => v.id === id);
-  if (index === -1) {
+export async function updateVendor(id, data, client = prisma) {
+  const existing = await client.vendor.findUnique({ where: { id } });
+  if (!existing) {
     const error = new Error(`Vendor with ID '${id}' not found`);
     error.statusCode = 404;
     throw error;
   }
 
-  const updated = {
-    ...vendors[index],
-    ...data,
-    updatedAt: new Date().toISOString()
-  };
-
-  vendors[index] = updated;
-
-  if (prisma && prisma.vendor) {
-    try {
-      const dbUpdated = await prisma.vendor.update({
-        where: { id },
-        data: {
-          name: data.name,
-          category: data.category,
-          contactEmail: data.contactEmail,
-          leadTimeDays: data.leadTimeDays,
-          targetOtifRate: data.targetOtifRate,
-          isActive: data.isActive
-        }
-      });
-      return calculateVendorSlaMetrics(dbUpdated, deliveries);
-    } catch {
-      // Fallback
+  const dbUpdated = await client.vendor.update({
+    where: { id },
+    data: {
+      name: data.name,
+      category: data.category,
+      contactEmail: data.contactEmail,
+      leadTimeDays: data.leadTimeDays,
+      targetOtifRate: data.targetOtifRate,
+      isActive: data.isActive
     }
-  }
+  });
 
-  return calculateVendorSlaMetrics(updated, deliveries);
+  const deliveries = await client.vendorDelivery.findMany({ where: { vendorId: id } });
+  return calculateVendorSlaMetrics(dbUpdated, deliveries);
 }
 
 /**
  * Retrieves delivery records with optional filtering and pagination.
  */
-export async function getDeliveries(query = {}, referenceTime = new Date()) {
-  let deliveryList = [...deliveries];
-
-  if (prisma && prisma.vendorDelivery) {
-    try {
-      const dbDeliveries = await prisma.vendorDelivery.findMany({
-        orderBy: { expectedDeliveryDate: 'desc' }
-      });
-      if (dbDeliveries.length > 0) {
-        deliveryList = dbDeliveries;
-      }
-    } catch {
-      // Fallback
-    }
-  }
-
-  // Filter by vendorId
+export async function getDeliveries(query = {}, referenceTime = new Date(), client = prisma) {
+  const where = {};
   if (query.vendorId) {
-    deliveryList = deliveryList.filter(d => d.vendorId === query.vendorId);
+    where.vendorId = query.vendorId;
   }
 
-  // Filter by status or OVERDUE virtual status
-  if (query.status) {
-    const filterStatus = query.status.toUpperCase();
-    if (filterStatus === 'OVERDUE') {
-      deliveryList = deliveryList.filter(d => {
-        const metrics = calculateDeliveryMetrics(d, referenceTime);
-        return metrics.isOverdue;
-      });
-    } else {
-      deliveryList = deliveryList.filter(d => d.status.toUpperCase() === filterStatus);
-    }
+  // If filtering by standard database status (DELIVERED, SCHEDULED, PARTIALLY_RECEIVED, CANCELLED)
+  if (query.status && query.status.toUpperCase() !== 'OVERDUE') {
+    where.status = query.status.toUpperCase();
   }
 
-  // Sort descending by expected delivery date, tie-broken by ID
-  deliveryList.sort((a, b) => {
-    const dateDiff = new Date(b.expectedDeliveryDate).getTime() - new Date(a.expectedDeliveryDate).getTime();
-    if (dateDiff !== 0) return dateDiff;
-    return a.id.localeCompare(b.id);
+  const rawDeliveries = await client.vendorDelivery.findMany({
+    where,
+    orderBy: [
+      { expectedDeliveryDate: 'desc' },
+      { id: 'asc' }
+    ]
   });
+
+  let deliveryList = rawDeliveries;
+
+  // Filter by virtual status: OVERDUE
+  if (query.status && query.status.toUpperCase() === 'OVERDUE') {
+    deliveryList = deliveryList.filter(d => {
+      const metrics = calculateDeliveryMetrics(d, referenceTime);
+      return metrics.isOverdue;
+    });
+  }
 
   const total = deliveryList.length;
 
-  // Pagination support
+  // Bounded pagination support
   let paginated = deliveryList;
   if (query.limit !== undefined || query.offset !== undefined) {
     const offset = query.offset ? parseInt(query.offset, 10) : 0;
@@ -251,18 +166,8 @@ export async function getDeliveries(query = {}, referenceTime = new Date()) {
 /**
  * Retrieves a single delivery by ID.
  */
-export async function getDeliveryById(id, referenceTime = new Date()) {
-  let delivery = deliveries.find(d => d.id === id);
-
-  if (prisma && prisma.vendorDelivery) {
-    try {
-      const dbDelivery = await prisma.vendorDelivery.findUnique({ where: { id } });
-      if (dbDelivery) delivery = dbDelivery;
-    } catch {
-      // Fallback
-    }
-  }
-
+export async function getDeliveryById(id, referenceTime = new Date(), client = prisma) {
+  const delivery = await client.vendorDelivery.findUnique({ where: { id } });
   if (!delivery) {
     const error = new Error(`Delivery with ID '${id}' not found`);
     error.statusCode = 404;
@@ -278,10 +183,10 @@ export async function getDeliveryById(id, referenceTime = new Date()) {
 /**
  * Creates a new purchase order or delivery commitment.
  */
-export async function createDelivery(data, referenceTime = new Date()) {
-  // Validate that vendor exists
-  const vendorExists = vendors.some(v => v.id === data.vendorId);
-  if (!vendorExists) {
+export async function createDelivery(data, referenceTime = new Date(), client = prisma) {
+  // Validate that vendor exists in PostgreSQL
+  const vendor = await client.vendor.findUnique({ where: { id: data.vendorId } });
+  if (!vendor) {
     const error = new Error(`Cannot create delivery: Vendor with ID '${data.vendorId}' does not exist`);
     error.statusCode = 400;
     throw error;
@@ -289,101 +194,53 @@ export async function createDelivery(data, referenceTime = new Date()) {
 
   const deliveryId = data.id || `DEL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-  const newDelivery = {
-    id: deliveryId,
-    vendorId: data.vendorId,
-    poNumber: data.poNumber,
-    skuId: data.skuId || null,
-    depotId: data.depotId || null,
-    expectedDeliveryDate: data.expectedDeliveryDate,
-    actualDeliveryDate: data.actualDeliveryDate || null,
-    expectedQuantity: data.expectedQuantity,
-    receivedQuantity: data.receivedQuantity ?? 0,
-    status: data.status || 'SCHEDULED',
-    notes: data.notes || '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  deliveries.unshift(newDelivery);
-
-  if (prisma && prisma.vendorDelivery) {
-    try {
-      const dbCreated = await prisma.vendorDelivery.create({
-        data: {
-          id: newDelivery.id,
-          vendorId: newDelivery.vendorId,
-          poNumber: newDelivery.poNumber,
-          skuId: newDelivery.skuId,
-          depotId: newDelivery.depotId,
-          expectedDeliveryDate: new Date(newDelivery.expectedDeliveryDate),
-          actualDeliveryDate: newDelivery.actualDeliveryDate ? new Date(newDelivery.actualDeliveryDate) : null,
-          expectedQuantity: newDelivery.expectedQuantity,
-          receivedQuantity: newDelivery.receivedQuantity,
-          status: newDelivery.status,
-          notes: newDelivery.notes
-        }
-      });
-      return {
-        ...dbCreated,
-        metrics: calculateDeliveryMetrics(dbCreated, referenceTime)
-      };
-    } catch {
-      // In-memory fallback
+  const dbCreated = await client.vendorDelivery.create({
+    data: {
+      id: deliveryId,
+      vendorId: data.vendorId,
+      poNumber: data.poNumber,
+      skuId: data.skuId || null,
+      depotId: data.depotId || null,
+      expectedDeliveryDate: new Date(data.expectedDeliveryDate),
+      actualDeliveryDate: data.actualDeliveryDate ? new Date(data.actualDeliveryDate) : null,
+      expectedQuantity: data.expectedQuantity,
+      receivedQuantity: data.receivedQuantity ?? 0,
+      status: data.status || 'SCHEDULED',
+      notes: data.notes || ''
     }
-  }
+  });
 
   return {
-    ...newDelivery,
-    metrics: calculateDeliveryMetrics(newDelivery, referenceTime)
+    ...dbCreated,
+    metrics: calculateDeliveryMetrics(dbCreated, referenceTime)
   };
 }
 
 /**
  * Updates a delivery record (e.g. recording arrival, received quantity, status).
  */
-export async function updateDelivery(id, data, referenceTime = new Date()) {
-  const index = deliveries.findIndex(d => d.id === id);
-  if (index === -1) {
+export async function updateDelivery(id, data, referenceTime = new Date(), client = prisma) {
+  const existing = await client.vendorDelivery.findUnique({ where: { id } });
+  if (!existing) {
     const error = new Error(`Delivery with ID '${id}' not found`);
     error.statusCode = 404;
     throw error;
   }
 
-  const existing = deliveries[index];
-
-  const updated = {
-    ...existing,
-    ...data,
-    updatedAt: new Date().toISOString()
-  };
-
-  deliveries[index] = updated;
-
-  if (prisma && prisma.vendorDelivery) {
-    try {
-      const dbUpdated = await prisma.vendorDelivery.update({
-        where: { id },
-        data: {
-          actualDeliveryDate: data.actualDeliveryDate !== undefined
-            ? (data.actualDeliveryDate ? new Date(data.actualDeliveryDate) : null)
-            : undefined,
-          receivedQuantity: data.receivedQuantity !== undefined ? data.receivedQuantity : undefined,
-          status: data.status !== undefined ? data.status : undefined,
-          notes: data.notes !== undefined ? data.notes : undefined
-        }
-      });
-      return {
-        ...dbUpdated,
-        metrics: calculateDeliveryMetrics(dbUpdated, referenceTime)
-      };
-    } catch {
-      // Fallback
+  const dbUpdated = await client.vendorDelivery.update({
+    where: { id },
+    data: {
+      actualDeliveryDate: data.actualDeliveryDate !== undefined
+        ? (data.actualDeliveryDate ? new Date(data.actualDeliveryDate) : null)
+        : undefined,
+      receivedQuantity: data.receivedQuantity !== undefined ? data.receivedQuantity : undefined,
+      status: data.status !== undefined ? data.status : undefined,
+      notes: data.notes !== undefined ? data.notes : undefined
     }
-  }
+  });
 
   return {
-    ...updated,
-    metrics: calculateDeliveryMetrics(updated, referenceTime)
+    ...dbUpdated,
+    metrics: calculateDeliveryMetrics(dbUpdated, referenceTime)
   };
 }
