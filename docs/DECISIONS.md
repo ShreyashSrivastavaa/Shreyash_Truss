@@ -70,3 +70,49 @@ Adopt a strict **fail-fast, single-source-of-truth** architecture:
 ### Trade-offs & Consequences
 * **Positives:** Guarantees absolute ledger integrity. Database outages are immediately visible to operational monitors, load balancers, and clients. Zero credential leakage.
 * **Negatives:** When PostgreSQL is offline, requests fail with 503 rather than returning stale mock data. This is the correct, safe behavior for an enterprise supply chain management system.
+
+---
+
+## ADR-003: User Identity, Password Security & Backend Role-Based Access Control (RBAC)
+
+### Status
+Accepted & Implemented (Commits `62e1a44`, `4bc2216`, `dd3ff97`)
+
+### Context
+In the prototype implementation, user authentication and authorization were simulated purely on the frontend:
+1. User profiles and mock roles were held in client-side React `localStorage`.
+2. A single static demo credential (`DEMO_PASSWORD = "nexus2026"`) was evaluated in client memory.
+3. No backend `User` entity or persistence layer existed in PostgreSQL.
+4. All mutating backend endpoints (`POST /api/transfers`, `/dispatch`, `/receive`, `/cancel`, `POST /api/vendors`, `PATCH /api/vendors/:id`) were unauthenticated and unprotected. Any client could invoke state transitions or mutate vendor configurations without identity verification, role checks, or regional boundary enforcement.
+
+### Decision
+Implement production-grade, authoritative backend authentication and role-based access control backed by PostgreSQL:
+1. **User Persistence (`server/prisma/migrations/1_add_user_auth/`):**
+   - Added `User` model with `id`, unique `email`, `passwordHash`, `name`, `role`, and optional `depotId` foreign key to `Depot(id)` (`ON DELETE SET NULL`).
+   - Tracked and deployed via Prisma migration `1_add_user_auth`.
+2. **Native Cryptography & Zero-Dependency Token Architecture (`server/src/utils/crypto.js`):**
+   - Utilized native `node:crypto.scrypt` with a cryptographically secure 16-byte random salt and 64-byte key derivation for password hashing.
+   - Employed `timingSafeEqual` for constant-time hash comparison to eliminate timing side-channel attacks.
+   - Implemented stateless HMAC-SHA256 signed bearer tokens carrying `sub`, `email`, `role`, `depotId`, and timestamped expiration (`exp`). Eliminates third-party supply-chain dependencies (`bcryptjs`, `jsonwebtoken`).
+3. **Registration, Login & Profile Endpoints (`server/src/routes/authRoutes.js`):**
+   - `POST /api/auth/register`: Validates email, role, and password strength (minimum 8 characters) via Zod schemas; rejects duplicates with `409 Conflict`.
+   - `POST /api/auth/login`: Authenticates against hashed credentials; issues signed bearer token; returns sanitized profile.
+   - `GET /api/auth/me`: Resolves token against database user; returns active profile; returns `401 Unauthorized` for missing/invalid tokens.
+4. **Backend Role & Scope Enforcement (`server/src/middleware/authMiddleware.js`):**
+   - `authenticateUser`: Optional credential extractor attaching verified `req.user`.
+   - `requireAuth`: Strict barrier returning `401 Unauthorized` if unauthenticated.
+   - `requireRole(...roles)`: Enforces role permissions (e.g., `HEAD_OF_SUPPLY_CHAIN`, `DEPOT_MANAGER`, `PROCUREMENT_MANAGER`, `ADMIN`), returning `403 Forbidden` on role mismatch.
+   - `requireDepotScope(getDepotId)`: Enforces regional isolation. Even with a valid `DEPOT_MANAGER` role, a manager assigned to Mumbai (`DEPOT-BOM`) is blocked from dispatching, receiving, or cancelling stock transfers belonging to Bengaluru (`DEPOT-BLR`) or Delhi (`DEPOT-DEL`).
+5. **Fail-Fast Error Integration:**
+   - All authentication routes delegate to `next(err)`.
+   - Database connection drops during authentication map to `503 DATABASE_UNAVAILABLE`, consistent with ADR-002.
+
+### Alternatives Considered
+* **Client-Only Mock Authentication (Status Quo):** Rejected. In an enterprise ERP/SCM system, client-side authorization is security theatre; the backend must be the authoritative policy enforcement point.
+* **Third-Party Identity Providers (Auth0, Firebase Auth, Supabase):** Rejected for core domain services. Adds external operational dependencies, latency, and vendor lock-in for internal supply chain operations.
+* **External npm Packages (`jsonwebtoken`, `bcryptjs`):** Rejected. Node.js `crypto` is natively compiled, battle-tested, high-performance, and eliminates supply chain risk.
+* **Role-Only RBAC without Depot Scoping:** Rejected. In a multi-depot logistics network, depot managers must have least-privilege access restricted to their physical facilities to prevent cross-depot tampering.
+
+### Trade-offs & Consequences
+* **Positives:** Complete end-to-end security boundary. Zero unprotected state transitions. Immutable audit trail linking actions to authentic user identities. Regional isolation enforced at the HTTP middleware layer. Zero external npm dependencies.
+* **Negatives:** API requests mutating transfers or vendors now require an `Authorization: Bearer <token>` header. Existing tests and client requests must authenticate before performing privileged mutations.

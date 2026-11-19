@@ -2,8 +2,12 @@ import { PrismaClient } from '@prisma/client';
 import { initialDepots, initialSkus, initialInventory } from '../src/data/mockData.js';
 import { initialVendors, initialVendorDeliveries } from '../src/data/mockVendorData.js';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const prisma = new PrismaClient();
 
