@@ -2,22 +2,18 @@ import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { sanitizeErrorMessage } from './utils/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-let prisma = null;
-
-if (process.env.DATABASE_URL) {
-  try {
-    prisma = new PrismaClient();
-  } catch (err) {
-    console.warn('⚠️ Prisma client initialization warning:', err.message);
-    prisma = null;
-  }
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is required');
 }
+
+let prisma = new PrismaClient();
 
 /**
  * Probes database health with a quick `SELECT 1` query.
@@ -52,7 +48,7 @@ export async function checkDatabaseHealth(client = prisma, { timeoutMs = 2000 } 
     const errorType = err.name || 'Error';
     const errorCode = err.code ? ` (${err.code})` : '';
     const rawMessage = err.message || 'Unknown database error';
-    const sanitizedMessage = rawMessage.replace(/postgres(?:ql)?:\/\/[^\s"',]+/gi, '[REDACTED_DATABASE_URL]');
+    const sanitizedMessage = sanitizeErrorMessage(rawMessage);
 
     console.error(`Health check failed: database probe error [${errorType}${errorCode}]: ${sanitizedMessage}`);
     return { ok: false, error: err };

@@ -7,6 +7,7 @@ import inventoryRoutes from './routes/inventoryRoutes.js';
 import transferRoutes from './routes/transferRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
 import prisma, { checkDatabaseHealth } from './db.js';
+import { isDatabaseConnectionError, sanitizeErrorMessage } from './utils/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,11 +67,25 @@ app.use((req, res) => {
   });
 });
 
-// Global error handler for malformed JSON and unhandled server errors
+// Global error handler for malformed JSON, database outages, and unhandled server errors
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     return res.status(400).json({
       error: 'Malformed JSON payload in request body'
+    });
+  }
+
+  // Map database connection/infrastructure failures to 503 DATABASE_UNAVAILABLE
+  if (isDatabaseConnectionError(err)) {
+    const errorType = err.name || 'Error';
+    const errorCode = err.code ? ` (${err.code})` : '';
+    const rawMessage = err.message || 'Database connection error';
+    const sanitized = sanitizeErrorMessage(rawMessage);
+    console.error(`[DATABASE_UNAVAILABLE] [${errorType}${errorCode}]: ${sanitized}`);
+
+    return res.status(503).json({
+      error: 'Database service is temporarily unavailable',
+      code: 'DATABASE_UNAVAILABLE'
     });
   }
 

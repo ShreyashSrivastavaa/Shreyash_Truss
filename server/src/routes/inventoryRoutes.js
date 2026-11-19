@@ -1,14 +1,16 @@
 import { Router } from 'express';
 import { getInventoryStatus, getDepots, getSkus, resetState } from '../services/inventoryService.js';
+import prisma from '../db.js';
 
 const router = Router();
 
 // GET /api/inventory - returns full inventory state with depot & SKU details and balance status
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
-    const items = await getInventoryStatus();
-    const depots = await getDepots();
-    const skus = await getSkus();
+    const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
+    const items = await getInventoryStatus(client);
+    const depots = await getDepots(client);
+    const skus = await getSkus(client);
 
     // Summary counts
     const deficits = items.filter(i => i.status === 'DEFICIT').length;
@@ -35,12 +37,12 @@ router.get('/', async (req, res) => {
       inventory: items
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
 // POST /api/inventory/reset - resets synthetic state back to default baseline (disabled in production unless ALLOW_DEMO_RESET=true)
-router.post('/reset', async (req, res) => {
+router.post('/reset', async (req, res, next) => {
   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_RESET !== 'true') {
     return res.status(403).json({
       error: 'Reset endpoint is disabled in production environments'
@@ -48,10 +50,11 @@ router.post('/reset', async (req, res) => {
   }
 
   try {
-    await resetState();
+    const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
+    await resetState(client);
     res.status(200).json({ message: 'Inventory state reset to initial synthetic baseline' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 

@@ -13,24 +13,26 @@ import {
   cancelTransfer,
   getTransferHistory
 } from '../services/inventoryService.js';
+import prisma from '../db.js';
 
 const router = Router();
 
 // GET /api/transfers/opportunities - lists calculated lateral transfer opportunities
-router.get('/opportunities', async (req, res) => {
+router.get('/opportunities', async (req, res, next) => {
   try {
-    const opportunities = await getTransferOpportunities();
+    const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
+    const opportunities = await getTransferOpportunities(null, client);
     res.status(200).json({
       count: opportunities.length,
       opportunities
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
 // GET /api/transfers - lists transfer history (supports bounded pagination via optional limit and offset)
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   const validationResult = transferPaginationQuerySchema.safeParse(req.query);
   if (!validationResult.success) {
     return res.status(400).json({
@@ -57,18 +59,19 @@ router.get('/', async (req, res) => {
       limit = Math.min(parsedLimit, 500);
     }
 
-    const history = await getTransferHistory({ limit, offset });
+    const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
+    const history = await getTransferHistory({ limit, offset }, client);
     res.status(200).json({
       count: history.length,
       transfers: history
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
 // POST /api/transfers - validates and creates a lateral inventory transfer in PENDING status
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   const validationResult = createTransferSchema.safeParse(req.body);
   if (!validationResult.success) {
     return res.status(400).json({
@@ -81,21 +84,19 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const result = await createTransfer(validationResult.data);
+    const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
+    const result = await createTransfer(validationResult.data, client);
     res.status(201).json({
       message: 'Transfer created successfully',
       ...result
     });
   } catch (error) {
-    const status = error.statusCode || 500;
-    res.status(status).json({
-      error: error.message
-    });
+    next(error);
   }
 });
 
 // POST /api/transfers/:id/dispatch - dispatches a PENDING transfer to IN_TRANSIT
-router.post('/:id/dispatch', async (req, res) => {
+router.post('/:id/dispatch', async (req, res, next) => {
   const validationResult = transferIdParamSchema.safeParse(req.params);
   if (!validationResult.success) {
     return res.status(400).json({
@@ -108,21 +109,19 @@ router.post('/:id/dispatch', async (req, res) => {
   }
 
   try {
-    const result = await dispatchTransfer(validationResult.data.id);
+    const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
+    const result = await dispatchTransfer(validationResult.data.id, client);
     res.status(200).json({
       message: 'Transfer dispatched successfully',
       ...result
     });
   } catch (error) {
-    const status = error.statusCode || 500;
-    res.status(status).json({
-      error: error.message
-    });
+    next(error);
   }
 });
 
 // POST /api/transfers/:id/receive - marks an IN_TRANSIT transfer as RECEIVED
-router.post('/:id/receive', async (req, res) => {
+router.post('/:id/receive', async (req, res, next) => {
   const validationResult = transferIdParamSchema.safeParse(req.params);
   if (!validationResult.success) {
     return res.status(400).json({
@@ -135,21 +134,19 @@ router.post('/:id/receive', async (req, res) => {
   }
 
   try {
-    const result = await receiveTransfer(validationResult.data.id);
+    const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
+    const result = await receiveTransfer(validationResult.data.id, client);
     res.status(200).json({
       message: 'Transfer received successfully',
       ...result
     });
   } catch (error) {
-    const status = error.statusCode || 500;
-    res.status(status).json({
-      error: error.message
-    });
+    next(error);
   }
 });
 
 // POST /api/transfers/:id/cancel - cancels a PENDING transfer and releases reserved inventory
-router.post('/:id/cancel', async (req, res) => {
+router.post('/:id/cancel', async (req, res, next) => {
   const validationResult = transferIdParamSchema.safeParse(req.params);
   if (!validationResult.success) {
     return res.status(400).json({
@@ -162,16 +159,14 @@ router.post('/:id/cancel', async (req, res) => {
   }
 
   try {
-    const result = await cancelTransfer(validationResult.data.id);
+    const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
+    const result = await cancelTransfer(validationResult.data.id, client);
     res.status(200).json({
       message: 'Transfer cancelled successfully',
       ...result
     });
   } catch (error) {
-    const status = error.statusCode || 500;
-    res.status(status).json({
-      error: error.message
-    });
+    next(error);
   }
 });
 
