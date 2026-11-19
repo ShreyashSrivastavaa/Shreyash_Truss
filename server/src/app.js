@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import transferRoutes from './routes/transferRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
+import prisma, { checkDatabaseHealth } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,15 +23,24 @@ if (fs.existsSync(clientDistPath)) {
   app.use(express.static(clientDistPath));
 }
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    service: 'nexus-backend',
-    version: '0.1.0',
-    timestamp: new Date().toISOString(),
-    uptimeSeconds: Math.floor(process.uptime()),
-    environment: process.env.NODE_ENV || 'development'
+// Health check endpoint (Readiness probe verifying PostgreSQL connectivity)
+app.get('/api/health', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+
+  const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
+  const timeoutMs = req.app.locals.dbHealthTimeoutMs || 2000;
+  const result = await checkDatabaseHealth(client, { timeoutMs });
+
+  if (result.ok) {
+    return res.status(200).json({
+      status: 'ok',
+      database: 'up'
+    });
+  }
+
+  return res.status(503).json({
+    status: 'unavailable',
+    database: 'down'
   });
 });
 
