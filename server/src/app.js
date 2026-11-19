@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import transferRoutes from './routes/transferRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 import prisma, { checkDatabaseHealth } from './db.js';
 import { isDatabaseConnectionError, sanitizeErrorMessage } from './utils/errorHandler.js';
 
@@ -46,6 +47,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Domain Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/transfers', transferRoutes);
 app.use('/api/vendors', vendorRoutes);
