@@ -18,6 +18,7 @@ model Depot {
   inventory         InventoryLevel[]
   outgoingTransfers Transfer[]       @relation("FromDepot")
   incomingTransfers Transfer[]       @relation("ToDepot")
+  users             User[]
 }
 
 model Sku {
@@ -95,4 +96,17 @@ model VendorDelivery {
   updatedAt            DateTime  @updatedAt
 
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("VIEWER")
+  depotId      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  depot Depot? @relation(fields: [depotId], references: [id], onDelete: SetNull)
 }
