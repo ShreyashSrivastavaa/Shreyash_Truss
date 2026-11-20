@@ -9,6 +9,7 @@ describe('HTTP API Transfer Lifecycle & State Machine Integration (Day 3)', () =
   let baseUrl;
 
   beforeEach(async () => {
+    app.locals.allowAnonymousMutations = true;
     await resetState();
     await new Promise(resolve => {
       server = app.listen(0, () => {
@@ -20,6 +21,7 @@ describe('HTTP API Transfer Lifecycle & State Machine Integration (Day 3)', () =
   });
 
   afterEach(async () => {
+    delete app.locals.allowAnonymousMutations;
     if (server) {
       await new Promise(resolve => server.close(resolve));
     }

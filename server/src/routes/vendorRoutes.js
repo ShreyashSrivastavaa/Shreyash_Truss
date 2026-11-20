@@ -59,7 +59,11 @@ router.get('/deliveries', async (req, res, next) => {
 });
 
 // POST /api/vendors/deliveries - Record a new purchase order / delivery commitment
-router.post('/deliveries', async (req, res, next) => {
+router.post(
+  '/deliveries',
+  authenticateUser,
+  requireRole('HEAD_OF_SUPPLY_CHAIN', 'PROCUREMENT_MANAGER', 'ADMIN'),
+  async (req, res, next) => {
   const validation = createDeliverySchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(400).json({
@@ -106,7 +110,11 @@ router.get('/deliveries/:id', async (req, res, next) => {
 });
 
 // PATCH /api/vendors/deliveries/:id - Update delivery progress or intake
-router.patch('/deliveries/:id', async (req, res, next) => {
+router.patch(
+  '/deliveries/:id',
+  authenticateUser,
+  requireRole('HEAD_OF_SUPPLY_CHAIN', 'PROCUREMENT_MANAGER', 'ADMIN'),
+  async (req, res, next) => {
   const paramValidation = deliveryIdParamSchema.safeParse(req.params);
   if (!paramValidation.success) {
     return res.status(400).json({

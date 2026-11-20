@@ -138,3 +138,4 @@ export async function getUserProfile(userId, client = prisma) {
 
   return user;
 }
+

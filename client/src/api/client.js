@@ -3,6 +3,21 @@
  * In development, requests to /api are proxied to http://localhost:5000 via Vite.
  */
 
+function getAuthHeaders() {
+  try {
+    const raw = localStorage.getItem('nexus_auth_session');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.token) {
+        return { Authorization: `Bearer ${parsed.token}` };
+      }
+    }
+  } catch (e) {
+    // ignore parsing failure
+  }
+  return {};
+}
+
 async function handleResponse(response) {
   const contentType = response.headers.get('content-type');
   const isJson = contentType && contentType.includes('application/json');
@@ -52,7 +67,8 @@ export async function createTransfer(transferPayload) {
   const res = await fetch('/api/transfers', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
     },
     body: JSON.stringify(transferPayload)
   });
@@ -64,21 +80,30 @@ export const executeTransfer = createTransfer;
 
 export async function dispatchTransfer(transferId) {
   const res = await fetch(`/api/transfers/${encodeURIComponent(transferId)}/dispatch`, {
-    method: 'POST'
+    method: 'POST',
+    headers: {
+      ...getAuthHeaders()
+    }
   });
   return handleResponse(res);
 }
 
 export async function receiveTransfer(transferId) {
   const res = await fetch(`/api/transfers/${encodeURIComponent(transferId)}/receive`, {
-    method: 'POST'
+    method: 'POST',
+    headers: {
+      ...getAuthHeaders()
+    }
   });
   return handleResponse(res);
 }
 
 export async function cancelTransfer(transferId) {
   const res = await fetch(`/api/transfers/${encodeURIComponent(transferId)}/cancel`, {
-    method: 'POST'
+    method: 'POST',
+    headers: {
+      ...getAuthHeaders()
+    }
   });
   return handleResponse(res);
 }
@@ -117,7 +142,8 @@ export async function createVendorDelivery(payload) {
   const res = await fetch('/api/vendors/deliveries', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
     },
     body: JSON.stringify(payload)
   });
@@ -128,7 +154,8 @@ export async function updateVendorDelivery(deliveryId, payload) {
   const res = await fetch(`/api/vendors/deliveries/${encodeURIComponent(deliveryId)}`, {
     method: 'PATCH',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
     },
     body: JSON.stringify(payload)
   });

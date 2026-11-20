@@ -120,7 +120,7 @@ router.post(
 
   try {
     const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
-    const result = await dispatchTransfer(validationResult.data.id, client);
+    const result = await dispatchTransfer(validationResult.data.id, client, req.user);
     res.status(200).json({
       message: 'Transfer dispatched successfully',
       ...result
@@ -149,7 +149,7 @@ router.post(
 
   try {
     const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
-    const result = await receiveTransfer(validationResult.data.id, client);
+    const result = await receiveTransfer(validationResult.data.id, client, req.user);
     res.status(200).json({
       message: 'Transfer received successfully',
       ...result
@@ -178,7 +178,7 @@ router.post(
 
   try {
     const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
-    const result = await cancelTransfer(validationResult.data.id, client);
+    const result = await cancelTransfer(validationResult.data.id, client, req.user);
     res.status(200).json({
       message: 'Transfer cancelled successfully',
       ...result

@@ -7,7 +7,7 @@ import prisma from '../db.js';
 const router = Router();
 
 // POST /api/auth/register - Register a new user account in PostgreSQL
-router.post('/register', async (req, res, next) => {
+router.post('/register', authenticateUser, async (req, res, next) => {
   const validation = registerSchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(400).json({
@@ -19,9 +19,33 @@ router.post('/register', async (req, res, next) => {
     });
   }
 
+  // Prevent privilege escalation: unauthenticated public callers cannot choose roles or depot scopes
+  const isPrivileged = req.user && req.user.role === 'ADMIN';
+  const requestedRole = validation.data.role;
+  const requestedDepotId = validation.data.depotId;
+
+  if (!isPrivileged && !req.app.locals.allowRoleRegistration) {
+    if (requestedRole && requestedRole !== 'VIEWER') {
+      return res.status(403).json({
+        error: 'Forbidden: Public registration cannot assign privileged roles. Contact an administrator.'
+      });
+    }
+    if (requestedDepotId) {
+      return res.status(403).json({
+        error: 'Forbidden: Public registration cannot assign depot scope.'
+      });
+    }
+  }
+
+  const registrationData = {
+    ...validation.data,
+    role: (isPrivileged || req.app.locals.allowRoleRegistration) ? (requestedRole || 'VIEWER') : 'VIEWER',
+    depotId: (isPrivileged || req.app.locals.allowRoleRegistration) ? (requestedDepotId || null) : null
+  };
+
   try {
     const client = req.app.locals.prisma !== undefined ? req.app.locals.prisma : prisma;
-    const result = await registerUser(validation.data, client);
+    const result = await registerUser(registrationData, client);
     res.status(201).json({
       message: 'Account registered successfully',
       ...result

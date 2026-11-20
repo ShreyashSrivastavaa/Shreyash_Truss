@@ -3,6 +3,10 @@ import { promisify } from 'node:util';
 
 const scryptAsync = promisify(crypto.scrypt);
 
+if (process.env.NODE_ENV === 'production' && (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32)) {
+  throw new Error('CRITICAL SECURITY ERROR: AUTH_SECRET must be set and at least 32 characters long in production');
+}
+
 const AUTH_SECRET = process.env.AUTH_SECRET || 'nexus_secure_auth_token_signing_key_2026';
 
 /**
@@ -32,7 +36,10 @@ export async function verifyPassword(password, storedHash) {
   if (parts.length !== 2) return false;
 
   const [salt, keyHex] = parts;
+  if (!salt || !keyHex || keyHex.length === 0) return false;
+
   const expectedKey = Buffer.from(keyHex, 'hex');
+  if (expectedKey.length === 0) return false;
   const derivedKey = await scryptAsync(password, salt, expectedKey.length);
 
   return crypto.timingSafeEqual(expectedKey, derivedKey);
@@ -90,9 +97,10 @@ export function verifyToken(token) {
 
   const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
   const now = Math.floor(Date.now() / 1000);
-  if (payload.exp && payload.exp < now) {
+  if (!payload.exp || typeof payload.exp !== 'number' || payload.exp < now) {
     throw new Error('Token has expired');
   }
 
   return payload;
 }
+

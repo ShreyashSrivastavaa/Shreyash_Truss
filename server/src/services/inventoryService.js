@@ -278,7 +278,18 @@ export const executeTransfer = createTransfer;
  * Dispatches a PENDING transfer.
  * Decrements source onHand and reserved, increments destination inTransit, sets status to IN_TRANSIT.
  */
-export async function dispatchTransfer(transferId, client = prisma) {
+export async function dispatchTransfer(transferId, clientOrUser = prisma, optionalUser = null) {
+  let client = prisma;
+  let user = null;
+
+  if (clientOrUser && (clientOrUser.$transaction || clientOrUser.transfer)) {
+    client = clientOrUser;
+    user = optionalUser;
+  } else if (clientOrUser && (clientOrUser.role || clientOrUser.sub)) {
+    user = clientOrUser;
+    client = optionalUser || prisma;
+  }
+
   if (!transferId) {
     const err = new Error('transferId is required');
     err.statusCode = 400;
@@ -297,6 +308,22 @@ export async function dispatchTransfer(transferId, client = prisma) {
       const err = new Error(`Transfer '${transferId}' not found`);
       err.statusCode = 404;
       throw err;
+    }
+
+    // Enforce depot manager ownership: must match origin depot
+    if (user && user.role === 'DEPOT_MANAGER') {
+      if (!user.depotId) {
+        const err = new Error('Forbidden: Depot manager has no assigned depot');
+        err.statusCode = 403;
+        throw err;
+      }
+      if (transferRecord.fromDepotId !== user.depotId) {
+        const err = new Error(
+          `Forbidden: Depot manager '${user.email}' is only authorized to dispatch transfers from depot '${user.depotId}', but transfer originates from '${transferRecord.fromDepotId}'`
+        );
+        err.statusCode = 403;
+        throw err;
+      }
     }
 
     if (transferRecord.status !== 'PENDING') {
@@ -358,7 +385,18 @@ export async function dispatchTransfer(transferId, client = prisma) {
  * Receives an IN_TRANSIT transfer at the destination depot.
  * Decrements destination inTransit, increments destination onHand, sets status to RECEIVED.
  */
-export async function receiveTransfer(transferId, client = prisma) {
+export async function receiveTransfer(transferId, clientOrUser = prisma, optionalUser = null) {
+  let client = prisma;
+  let user = null;
+
+  if (clientOrUser && (clientOrUser.$transaction || clientOrUser.transfer)) {
+    client = clientOrUser;
+    user = optionalUser;
+  } else if (clientOrUser && (clientOrUser.role || clientOrUser.sub)) {
+    user = clientOrUser;
+    client = optionalUser || prisma;
+  }
+
   if (!transferId) {
     const err = new Error('transferId is required');
     err.statusCode = 400;
@@ -377,6 +415,22 @@ export async function receiveTransfer(transferId, client = prisma) {
       const err = new Error(`Transfer '${transferId}' not found`);
       err.statusCode = 404;
       throw err;
+    }
+
+    // Enforce depot manager ownership: must match destination depot
+    if (user && user.role === 'DEPOT_MANAGER') {
+      if (!user.depotId) {
+        const err = new Error('Forbidden: Depot manager has no assigned depot');
+        err.statusCode = 403;
+        throw err;
+      }
+      if (transferRecord.toDepotId !== user.depotId) {
+        const err = new Error(
+          `Forbidden: Depot manager '${user.email}' is only authorized to receive transfers at destination depot '${user.depotId}', but transfer is destined for '${transferRecord.toDepotId}'`
+        );
+        err.statusCode = 403;
+        throw err;
+      }
     }
 
     if (transferRecord.status !== 'IN_TRANSIT') {
@@ -427,7 +481,18 @@ export async function receiveTransfer(transferId, client = prisma) {
  * Cancels a PENDING transfer and releases the source depot's reserved inventory.
  * Cancellation of IN_TRANSIT shipments is strictly prohibited.
  */
-export async function cancelTransfer(transferId, client = prisma) {
+export async function cancelTransfer(transferId, clientOrUser = prisma, optionalUser = null) {
+  let client = prisma;
+  let user = null;
+
+  if (clientOrUser && (clientOrUser.$transaction || clientOrUser.transfer)) {
+    client = clientOrUser;
+    user = optionalUser;
+  } else if (clientOrUser && (clientOrUser.role || clientOrUser.sub)) {
+    user = clientOrUser;
+    client = optionalUser || prisma;
+  }
+
   if (!transferId) {
     const err = new Error('transferId is required');
     err.statusCode = 400;
@@ -446,6 +511,22 @@ export async function cancelTransfer(transferId, client = prisma) {
       const err = new Error(`Transfer '${transferId}' not found`);
       err.statusCode = 404;
       throw err;
+    }
+
+    // Enforce depot manager ownership: must match origin depot
+    if (user && user.role === 'DEPOT_MANAGER') {
+      if (!user.depotId) {
+        const err = new Error('Forbidden: Depot manager has no assigned depot');
+        err.statusCode = 403;
+        throw err;
+      }
+      if (transferRecord.fromDepotId !== user.depotId) {
+        const err = new Error(
+          `Forbidden: Depot manager '${user.email}' is only authorized to cancel transfers originating from depot '${user.depotId}', but transfer originates from '${transferRecord.fromDepotId}'`
+        );
+        err.statusCode = 403;
+        throw err;
+      }
     }
 
     if (transferRecord.status === 'IN_TRANSIT') {

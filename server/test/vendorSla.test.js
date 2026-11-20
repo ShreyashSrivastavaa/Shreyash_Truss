@@ -240,6 +240,7 @@ describe('Vendor SLA HTTP API Endpoints', () => {
   let baseUrl;
 
   beforeEach(async () => {
+    app.locals.allowAnonymousMutations = true;
     // Freeze referenceDate to 2026-11-01 so scheduled order DEL-2026-004 (expected 2026-11-05) is deterministic across wall-clock time
     app.locals.referenceDate = new Date('2026-11-01T00:00:00.000Z');
     await resetVendorState();
@@ -253,6 +254,7 @@ describe('Vendor SLA HTTP API Endpoints', () => {
   });
 
   afterEach(async () => {
+    delete app.locals.allowAnonymousMutations;
     delete app.locals.referenceDate;
     if (server) {
       await new Promise(resolve => server.close(resolve));

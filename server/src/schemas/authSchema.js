@@ -15,7 +15,8 @@ export const registerSchema = z.object({
     .transform(val => val.trim().toLowerCase()),
   password: z
     .string()
-    .min(8, 'Password must be at least 8 characters long'),
+    .min(8, 'Password must be at least 8 characters long')
+    .max(128, 'Password must not exceed 128 characters'),
   name: z
     .string()
     .min(2, 'Name must be at least 2 characters long')
@@ -24,7 +25,7 @@ export const registerSchema = z.object({
     .enum(VALID_ROLES, {
       errorMap: () => ({ message: `Role must be one of: ${VALID_ROLES.join(', ')}` })
     })
-    .default('VIEWER'),
+    .optional(),
   depotId: z.string().optional().nullable()
 });
 
@@ -36,4 +37,6 @@ export const loginSchema = z.object({
   password: z
     .string()
     .min(1, 'Password is required')
+    .max(128, 'Password must not exceed 128 characters')
 });
+

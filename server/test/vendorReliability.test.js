@@ -8,6 +8,7 @@ describe('Vendor SLA Reliability & Database Outage Failure Modes (Commit 4)', ()
   let baseUrl;
 
   beforeEach(async () => {
+    app.locals.allowAnonymousMutations = true;
     await resetVendorState();
     await new Promise(resolve => {
       server = app.listen(0, () => {
@@ -19,6 +20,7 @@ describe('Vendor SLA Reliability & Database Outage Failure Modes (Commit 4)', ()
   });
 
   afterEach(async () => {
+    delete app.locals.allowAnonymousMutations;
     delete app.locals.prisma;
     if (server) {
       await new Promise(resolve => server.close(resolve));

@@ -41,32 +41,32 @@ export function requireAuth(req, res, next) {
  */
 export function requireRole(...allowedRoles) {
   return (req, res, next) => {
-    // If strict auth is enforced or a user is logged in:
-    if (process.env.STRICT_AUTH === 'true' || req.app.locals.enforceAuth || req.user) {
-      if (!req.user) {
-        const error = new Error('Authentication required: Bearer token is missing');
-        error.statusCode = 401;
-        return next(error);
-      }
+    // In legacy test suites with anonymous mutations explicitly allowed:
+    if (process.env.ALLOW_ANONYMOUS_MUTATIONS === 'true' || req.app.locals.allowAnonymousMutations) {
+      return next();
+    }
 
-      // ADMIN has universal clearance
-      if (req.user.role === 'ADMIN' || allowedRoles.includes(req.user.role)) {
-        return next();
-      }
-
-      const error = new Error(`Forbidden: Role '${req.user.role}' is not authorized to perform this action. Required: ${allowedRoles.join(', ')}`);
-      error.statusCode = 403;
+    if (!req.user) {
+      const error = new Error('Authentication required: Bearer token is missing');
+      error.statusCode = 401;
       return next(error);
     }
 
-    // In legacy test mode without auth header, pass through
-    next();
+    // ADMIN has universal clearance
+    if (req.user.role === 'ADMIN' || allowedRoles.includes(req.user.role)) {
+      return next();
+    }
+
+    const error = new Error(`Forbidden: Role '${req.user.role}' is not authorized to perform this action. Required: ${allowedRoles.join(', ')}`);
+    error.statusCode = 403;
+    return next(error);
   };
 }
 
 /**
  * Enforces depot-level authorization for depot managers.
  * If user is a DEPOT_MANAGER with an assigned depotId, verifies that the target depot matches.
+ * Rejects with 403 if depot manager lacks an assigned depotId.
  *
  * @param {(req: import('express').Request) => string|null|undefined} getDepotIdFromReq
  */
@@ -74,7 +74,13 @@ export function requireDepotScope(getDepotIdFromReq) {
   return (req, res, next) => {
     if (!req.user) return next();
 
-    if (req.user.role === 'DEPOT_MANAGER' && req.user.depotId) {
+    if (req.user.role === 'DEPOT_MANAGER') {
+      if (!req.user.depotId) {
+        const error = new Error('Forbidden: Depot manager has no assigned depot');
+        error.statusCode = 403;
+        return next(error);
+      }
+
       const targetDepotId = getDepotIdFromReq(req);
       if (targetDepotId && targetDepotId !== req.user.depotId) {
         const error = new Error(

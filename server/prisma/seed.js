@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { initialDepots, initialSkus, initialInventory } from '../src/data/mockData.js';
 import { initialVendors, initialVendorDeliveries } from '../src/data/mockVendorData.js';
+import { hashPassword } from '../src/utils/crypto.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -96,6 +97,62 @@ export async function seed(client = prisma) {
         receivedQuantity: del.receivedQuantity ?? 0,
         status: del.status,
         notes: del.notes
+      }
+    });
+  }
+
+  // 7. Seed System Staff & Administrative Users
+  console.log('Seeding baseline authorized staff accounts...');
+  await client.user.deleteMany();
+  const demoPasswordHash = await hashPassword('Nexus@2026');
+
+  const baselineUsers = [
+    {
+      email: 'scm@nexus-demo.com',
+      name: 'Priya Nair',
+      role: 'HEAD_OF_SUPPLY_CHAIN',
+      depotId: null
+    },
+    {
+      email: 'north@nexus-demo.com',
+      name: 'Rohit Chauhan',
+      role: 'DEPOT_MANAGER',
+      depotId: 'depot-north'
+    },
+    {
+      email: 'south@nexus-demo.com',
+      name: 'Meera Krishnan',
+      role: 'DEPOT_MANAGER',
+      depotId: 'depot-south'
+    },
+    {
+      email: 'east@nexus-demo.com',
+      name: 'Amit Banerjee',
+      role: 'DEPOT_MANAGER',
+      depotId: 'depot-east'
+    },
+    {
+      email: 'procurement@nexus-demo.com',
+      name: 'Sunita Rao',
+      role: 'PROCUREMENT_MANAGER',
+      depotId: null
+    },
+    {
+      email: 'admin@nexus-demo.com',
+      name: 'Nexus System Administrator',
+      role: 'ADMIN',
+      depotId: null
+    }
+  ];
+
+  for (const u of baselineUsers) {
+    await client.user.create({
+      data: {
+        email: u.email,
+        name: u.name,
+        role: u.role,
+        depotId: u.depotId,
+        passwordHash: demoPasswordHash
       }
     });
   }

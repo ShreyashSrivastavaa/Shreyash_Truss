@@ -95,14 +95,20 @@ Implement production-grade, authoritative backend authentication and role-based 
    - Employed `timingSafeEqual` for constant-time hash comparison to eliminate timing side-channel attacks.
    - Implemented stateless HMAC-SHA256 signed bearer tokens carrying `sub`, `email`, `role`, `depotId`, and timestamped expiration (`exp`). Eliminates third-party supply-chain dependencies (`bcryptjs`, `jsonwebtoken`).
 3. **Registration, Login & Profile Endpoints (`server/src/routes/authRoutes.js`):**
-   - `POST /api/auth/register`: Validates email, role, and password strength (minimum 8 characters) via Zod schemas; rejects duplicates with `409 Conflict`.
+   - `POST /api/auth/register`: Public registration strictly defaults role to `VIEWER` and depot to `null`. Attempts by unauthenticated callers to assign privileged roles (`ADMIN`, `HEAD_OF_SUPPLY_CHAIN`, etc.) or depot scopes are rejected with `403 Forbidden`. Privileged roles can only be provisioned by authenticated administrators. Password inputs enforce bounded lengths (8 to 128 characters) to guard against CPU-exhaustion DoS attacks.
    - `POST /api/auth/login`: Authenticates against hashed credentials; issues signed bearer token; returns sanitized profile.
    - `GET /api/auth/me`: Resolves token against database user; returns active profile; returns `401 Unauthorized` for missing/invalid tokens.
-4. **Backend Role & Scope Enforcement (`server/src/middleware/authMiddleware.js`):**
+4. **Backend Role & Scope Enforcement (`server/src/middleware/authMiddleware.js`, `inventoryService.js`):**
    - `authenticateUser`: Optional credential extractor attaching verified `req.user`.
    - `requireAuth`: Strict barrier returning `401 Unauthorized` if unauthenticated.
-   - `requireRole(...roles)`: Enforces role permissions (e.g., `HEAD_OF_SUPPLY_CHAIN`, `DEPOT_MANAGER`, `PROCUREMENT_MANAGER`, `ADMIN`), returning `403 Forbidden` on role mismatch.
-   - `requireDepotScope(getDepotId)`: Enforces regional isolation. Even with a valid `DEPOT_MANAGER` role, a manager assigned to Mumbai (`DEPOT-BOM`) is blocked from dispatching, receiving, or cancelling stock transfers belonging to Bengaluru (`DEPOT-BLR`) or Delhi (`DEPOT-DEL`).
+   - `requireRole(...roles)`: Enforces role permissions (e.g., `HEAD_OF_SUPPLY_CHAIN`, `DEPOT_MANAGER`, `PROCUREMENT_MANAGER`, `ADMIN`). Fails closed by default: any mutating request lacking a valid `Authorization` header is rejected with `401 Unauthorized`.
+   - `requireDepotScope` & Database-Backed Service Guards: Enforces regional isolation across the entire transfer lifecycle:
+     - Transfer creation (`POST /api/transfers`) verifies origin depot matches `req.user.depotId`.
+     - Transfer dispatch (`POST /api/transfers/:id/dispatch`) verifies origin depot matches `req.user.depotId`.
+     - Transfer receipt (`POST /api/transfers/:id/receive`) verifies destination depot matches `req.user.depotId`.
+     - Transfer cancellation (`POST /api/transfers/:id/cancel`) verifies origin depot matches `req.user.depotId`.
+     - Any depot manager lacking an assigned depot is blocked (`403 Forbidden`).
+   - Purchase order commitments (`POST /api/vendors/deliveries`, `PATCH /api/vendors/deliveries/:id`) are strictly protected by role checks (`HEAD_OF_SUPPLY_CHAIN`, `PROCUREMENT_MANAGER`, `ADMIN`).
 5. **Fail-Fast Error Integration:**
    - All authentication routes delegate to `next(err)`.
    - Database connection drops during authentication map to `503 DATABASE_UNAVAILABLE`, consistent with ADR-002.

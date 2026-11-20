@@ -10,6 +10,7 @@ export function AuthProvider({ children }) {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
+        if (parsed.user) return parsed.user;
         const match = findUserById(parsed.id);
         if (match) return match;
       }
@@ -19,7 +20,68 @@ export function AuthProvider({ children }) {
     return null; // not logged in initially
   });
 
-  const login = (email, password) => {
+  // Verify backend session on mount
+  useEffect(() => {
+    const session = localStorage.getItem(STORAGE_KEY);
+    if (!session) return;
+    try {
+      const parsed = JSON.parse(session);
+      if (parsed.token) {
+        fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${parsed.token}` }
+        })
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data?.user) {
+              const demoMatch = findUserByEmail(data.user.email);
+              const combined = {
+                ...(demoMatch || {}),
+                ...data.user,
+                title: demoMatch?.title || data.user.role,
+                avatar: demoMatch?.avatar || (data.user.name ? data.user.name.split(' ').map(n => n[0]).join('') : 'U'),
+                badgeColor: demoMatch?.badgeColor || 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+              };
+              setCurrentUser(combined);
+            }
+          })
+          .catch(() => {});
+      }
+    } catch (e) {}
+  }, []);
+
+  const login = async (email, password) => {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const demoMatch = findUserByEmail(email);
+        const combinedUser = {
+          ...(demoMatch || {}),
+          ...data.user,
+          title: demoMatch?.title || data.user.role,
+          avatar: demoMatch?.avatar || (data.user.name ? data.user.name.split(' ').map(n => n[0]).join('') : 'U'),
+          badgeColor: demoMatch?.badgeColor || 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
+          defaultMode: demoMatch?.defaultMode || 'detailed',
+          allowedTabs: demoMatch?.allowedTabs || ['INVENTORY', 'VENDORS']
+        };
+
+        setCurrentUser(combinedUser);
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ id: data.user.id, email: data.user.email, token: data.token, user: combinedUser })
+        );
+        return combinedUser;
+      }
+    } catch (e) {
+      console.warn('Backend login failed, evaluating fallback demo authentication:', e);
+    }
+
+    // Fallback for static demo accounts
     const user = findUserByEmail(email);
     if (!user) {
       throw new Error('User not found. Use one of the demo accounts listed below.');
@@ -37,16 +99,10 @@ export function AuthProvider({ children }) {
     return user;
   };
 
-  const loginAsUser = (userId) => {
+  const loginAsUser = async (userId) => {
     const user = findUserById(userId);
     if (!user) throw new Error('User not found');
-    setCurrentUser(user);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ id: user.id, email: user.email }));
-    } catch (e) {
-      console.error(e);
-    }
-    return user;
+    return login(user.email, DEMO_PASSWORD);
   };
 
   const logout = () => {

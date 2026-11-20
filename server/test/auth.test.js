@@ -9,6 +9,7 @@ describe('Real User Authentication, Registration & Token Lifecycle (Commit 2.2)'
   let baseUrl;
 
   beforeEach(async () => {
+    app.locals.allowRoleRegistration = true;
     // Clean users table before each test
     await prisma.user.deleteMany();
 
@@ -22,6 +23,7 @@ describe('Real User Authentication, Registration & Token Lifecycle (Commit 2.2)'
   });
 
   afterEach(async () => {
+    delete app.locals.allowRoleRegistration;
     delete app.locals.prisma;
     if (server) {
       await new Promise(resolve => server.close(resolve));
@@ -241,4 +243,80 @@ describe('Real User Authentication, Registration & Token Lifecycle (Commit 2.2)'
       code: 'DATABASE_UNAVAILABLE'
     });
   });
+
+  test('Public unauthenticated registration strictly defaults to VIEWER role without role parameter', async () => {
+    delete app.locals.allowRoleRegistration;
+
+    const res = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'public.viewer@truss.supply',
+        password: 'PublicPassword@2026',
+        name: 'Public Viewer'
+      })
+    });
+
+    assert.equal(res.status, 201);
+    const json = await res.json();
+    assert.equal(json.user.role, 'VIEWER', 'Public registrations must strictly default to VIEWER');
+    assert.equal(json.user.depotId, null);
+  });
+
+  test('Public unauthenticated registration rejects self-assigning ADMIN role with HTTP 403', async () => {
+    delete app.locals.allowRoleRegistration;
+
+    const res = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'attacker@truss.supply',
+        password: 'AttackerPassword@2026',
+        name: 'Attacker Attempting Admin',
+        role: 'ADMIN'
+      })
+    });
+
+    assert.equal(res.status, 403, 'Privilege escalation to ADMIN must return 403 Forbidden');
+    const json = await res.json();
+    assert.match(json.error, /cannot assign privileged roles/i);
+  });
+
+  test('Public unauthenticated registration rejects self-assigning depot scope with HTTP 403', async () => {
+    delete app.locals.allowRoleRegistration;
+
+    const res = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'attacker2@truss.supply',
+        password: 'AttackerPassword@2026',
+        name: 'Attacker Attempting Depot Scope',
+        depotId: 'depot-north'
+      })
+    });
+
+    assert.equal(res.status, 403, 'Public depot scope assignment must return 403 Forbidden');
+    const json = await res.json();
+    assert.match(json.error, /cannot assign depot scope/i);
+  });
+
+  test('Password length boundary: rejects passwords over 128 characters with HTTP 400', async () => {
+    const longPassword = 'A'.repeat(129);
+
+    const res = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'dos.test@truss.supply',
+        password: longPassword,
+        name: 'DoS Tester'
+      })
+    });
+
+    assert.equal(res.status, 400, 'Passwords exceeding 128 chars must be rejected to prevent scrypt CPU exhaustion');
+    const json = await res.json();
+    assert.match(json.details[0].message, /128 characters/i);
+  });
 });
+
